@@ -1,0 +1,99 @@
+/** Agent 面板 */
+export interface PanelLocale {
+    title: string
+    history: string
+    newSession: string
+}
+
+/** 输入框 */
+export interface ChatInputLocale {
+    placeholder: string
+    sendTooltip: string
+    stopTooltip: string
+    addFileTooltip: string
+    docsAttachedTooltip: string
+    docsNotAttachedTooltip: string
+    docsLabel: string
+    noDocsLabel: string
+    manageModelsLabel: string
+    modelLabel: string
+    toolConfigTooltip: string
+    thinkingOff: string
+    thinkingDefault: string
+    thinkingDeep: string
+}
+
+/** 消息气泡 */
+export interface MessageLocale {
+    reasoningTitle: string
+    thinkingLabel: string
+    retryButton: string
+    truncatedSuffix: string
+    fileChangeLabel: string
+    revertButton: string
+}
+
+/** 工具调用卡片/时间线 */
+export interface ToolLocale {
+    paramLabel: string
+    outputLabel: string
+    errorLabel: string
+    executingStatus: string
+    completedStatus: string
+    stepsLabel: string
+}
+
+/** 审批 */
+export interface ApprovalLocale {
+    riskLevelDangerous: string
+    riskLevelModerate: string
+    riskLevelSafe: string
+    requiredTitle: string
+    skipButton: string
+    confirmButton: string
+    modeAuto: string
+    modeDefault: string
+    modeManual: string
+}
+
+/** 会话历史 */
+export interface SessionLocale {
+    title: string
+    noHistory: string
+    untitled: string
+    noMessages: string
+    deleteConfirm: string
+    deleted: string
+    deleteFailed: string
+    deleteButton: string
+    cancelButton: string
+}
+
+/** 问卷 */
+export interface QuestionnaireLocale {
+    myAnswer: string
+    confirmSelection: string
+    backToEdit: string
+    submit: string
+    notSelected: string
+    customAnswerPlaceholder: string
+    inputPlaceholder: string
+}
+
+/** 错误边界 */
+export interface ErrorLocale {
+    title: string
+    reload: string
+}
+
+/** Agent UI 框架完整国际化接口 */
+export interface AgentUILocale {
+    panel: PanelLocale
+    chatInput: ChatInputLocale
+    message: MessageLocale
+    tool: ToolLocale
+    approval: ApprovalLocale
+    session: SessionLocale
+    questionnaire: QuestionnaireLocale
+    error: ErrorLocale
+}
