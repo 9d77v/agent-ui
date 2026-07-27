@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
-import { Button, Input, Typography, Space, Progress } from 'antd'
+import { Button, Input, Typography, Space, Progress, theme } from 'antd'
 import { RightOutlined, CheckOutlined, ArrowLeftOutlined } from '@ant-design/icons'
 import { useAgentLocale } from './locale/index'
 const { Text } = Typography
 
 export interface QuestionStep { id: string; question: string; options?: string[]; default?: string; custom?: boolean; input?: boolean; last?: boolean; multi?: boolean; allowFreeformInput?: boolean }
-interface Props { steps: QuestionStep[]; initialAnswers?: Record<string, string>; onSaveProgress?: (answers: Record<string, string>) => void; onComplete: (answers: string) => void }
+interface Props { steps: QuestionStep[]; initialAnswers?: Record<string, string>; onSaveProgress?: (answers: Record<string, string>) => void; onComplete: (answers: string) => void; darkMode?: boolean }
 
-export default function QuestionnaireForm({ steps, initialAnswers, onSaveProgress, onComplete }: Props) {
+export default function QuestionnaireForm({ steps, initialAnswers, onSaveProgress, onComplete, darkMode }: Props) {
+    const { token } = theme.useToken()
     const loc = useAgentLocale()
     const total = steps.length
     const [showReview, setShowReview] = useState(false)
@@ -23,20 +24,20 @@ export default function QuestionnaireForm({ steps, initialAnswers, onSaveProgres
     const isMulti = (s: QuestionStep): boolean => { if (s.multi) return true; if (/多选|\((.*?可.*?多.*?)\)|（.*?可.*?多.*?）/i.test(s.question)) return true; return false }
     const selectOption = (value: string) => { if (!step) return; const cur = answers[step.id] || ''; let nv: string; if (isMulti(step)) { const sel = cur ? cur.split('、').filter(Boolean) : []; const idx = sel.indexOf(value); idx >= 0 ? sel.splice(idx, 1) : sel.push(value); nv = sel.join('、') } else { nv = cur === value ? '' : value }; setCustomText(''); const na = { ...answers, [step.id]: nv }; if (!nv) delete na[step.id]; setAnswers(na); saveProgress(na) }
     const handleSubmit = () => { const fa = { ...answers }; const lines = [loc.questionnaire.myAnswer]; for (const s of steps) { const val = fa[s.id] || preSelected[s.id]; if (val) lines.push(`- ${s.question}：${val}`) }; onComplete(lines.join('\n')) }
-    if (showReview) return <div style={{ margin: '12px 0', padding: 16, background: '#fafafa', borderRadius: 12, border: '1px solid #e8e8e8' }}>
-        <Text strong style={{ display: 'block', marginBottom: 16, fontSize: 14 }}>{loc.questionnaire.confirmSelection}</Text>
-        {steps.map(s => { const val = answers[s.id] || preSelected[s.id] || ''; return <div key={s.id} style={{ marginBottom: 12, padding: '8px 12px', background: '#fff', borderRadius: 8, border: '1px solid #f0f0f0' }}><Text style={{ fontSize: 12, color: '#999', display: 'block', marginBottom: 2 }}>{s.question}</Text><Text style={{ fontSize: 14 }}>{val || <Text type="secondary" style={{ fontSize: 13 }}>{loc.questionnaire.notSelected}</Text>}</Text></div> })}
+    if (showReview) return <div style={{ margin: '12px 0', padding: 16, background: token.colorFillAlter, borderRadius: 12, border: `1px solid ${token.colorBorderSecondary}` }}>
+        <Text strong style={{ display: 'block', marginBottom: 16, fontSize: 14, color: token.colorText }}>{loc.questionnaire.confirmSelection}</Text>
+        {steps.map(s => { const val = answers[s.id] || preSelected[s.id] || ''; return <div key={s.id} style={{ marginBottom: 12, padding: '8px 12px', background: token.colorBgContainer, borderRadius: 8, border: `1px solid ${token.colorBorderSecondary}` }}><Text style={{ fontSize: 12, color: token.colorTextTertiary, display: 'block', marginBottom: 2 }}>{s.question}</Text><Text style={{ fontSize: 14, color: token.colorText }}>{val || <Text type="secondary" style={{ fontSize: 13 }}>{loc.questionnaire.notSelected}</Text>}</Text></div> })}
         <Space style={{ width: '100%', marginTop: 8 }}><Button onClick={() => { setCurrentIdx(total - 1); setShowReview(false) }}>{loc.questionnaire.backToEdit}</Button><Button type="primary" disabled={steps.some(s => !answers[s.id] && !preSelected[s.id])} icon={<CheckOutlined />} onClick={handleSubmit}>{loc.questionnaire.submit}</Button></Space>
     </div>
     if (!step) return null
-    return <div style={{ margin: '12px 0', padding: 16, background: '#fafafa', borderRadius: 12, border: '1px solid #e8e8e8' }}>
-        <div style={{ marginBottom: 8 }}><Text type="secondary" style={{ fontSize: 12 }}>{currentIdx + 1}/{total}</Text><Progress percent={Math.round(((showReview ? total : currentIdx) / total) * 100)} showInfo={false} strokeColor="#1677ff" size="small" /></div>
-        <Text strong style={{ display: 'block', marginBottom: 12, fontSize: 14 }}>{step.question}</Text>
+    return <div style={{ margin: '12px 0', padding: 16, background: token.colorFillAlter, borderRadius: 12, border: `1px solid ${token.colorBorderSecondary}` }}>
+        <div style={{ marginBottom: 8 }}><Text type="secondary" style={{ fontSize: 12 }}>{currentIdx + 1}/{total}</Text><Progress percent={Math.round(((showReview ? total : currentIdx) / total) * 100)} showInfo={false} strokeColor={token.colorPrimary} size="small" /></div>
+        <Text strong style={{ display: 'block', marginBottom: 12, fontSize: 14, color: token.colorText }}>{step.question}</Text>
         <div style={{ marginBottom: 12 }}>
             {step.options && step.options.length > 0 && <Space style={{ marginBottom: 10 }} wrap>{step.options.map(opt => { const isSelected = (answers[step.id!] || '').split('、').includes(opt); return <Button key={opt} size="small" type={isSelected ? 'primary' : 'default'} onClick={() => selectOption(opt)}>{opt}{isSelected && ' ✓'}</Button> })}</Space>}
             <Input.TextArea rows={2} placeholder={step.input ? loc.questionnaire.inputPlaceholder : loc.questionnaire.customAnswerPlaceholder} value={customText} onChange={e => { setCustomText(e.target.value); const t = e.target.value.trim(); const na = { ...answers }; if (t) na[step!.id] = t; else if (!answers[step!.id]) delete na[step!.id]; setAnswers(na); saveProgress(na) }} />
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f0f0f0', paddingTop: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: `1px solid ${token.colorBorderSecondary}`, paddingTop: 12 }}>
             <Button size="small" icon={<ArrowLeftOutlined />} disabled={currentIdx === 0} onClick={() => setCurrentIdx(currentIdx - 1)} />
             <Button size="small" type="primary" icon={<RightOutlined />} onClick={() => { const val = customText.trim() || answers[step!.id] || currentDefault; if (!val) return; const na = { ...answers, [step!.id]: val }; setAnswers(na); saveProgress(na); if (currentIdx === total - 1) setShowReview(true); else setCurrentIdx(currentIdx + 1) }} />
         </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Typography } from 'antd'
+import { Typography, theme } from 'antd'
 import { LoadingOutlined, CheckCircleOutlined, CloseCircleOutlined, CodeOutlined, FileTextOutlined, FolderOutlined, SearchOutlined, ConsoleSqlOutlined, EditOutlined, DownOutlined, RightOutlined, SaveOutlined, BranchesOutlined, QuestionCircleOutlined, CheckSquareOutlined, DeploymentUnitOutlined, LinkOutlined, ToolOutlined } from '@ant-design/icons'
 import { useAgentLocale } from './locale/index'
 
@@ -28,22 +28,22 @@ function toolMeta(name: string, displayNames?: Record<string, string>) {
 }
 
 export default function ToolCallCard({ tool, darkMode, defaultExpanded }: { tool: ToolCallItem; darkMode?: boolean; defaultExpanded?: boolean }) {
+    const { token } = theme.useToken()
     const loc = useAgentLocale()
     const displayNames = loc.toolDisplayNames
     const [expanded, setExpanded] = useState(defaultExpanded ?? tool.status === 'executing')
     useEffect(() => { if (defaultExpanded !== undefined) setExpanded(defaultExpanded) }, [defaultExpanded])
     const meta = toolMeta(tool.name, displayNames)
-    const bg = darkMode ? '#1e1e1e' : '#fafafa'; const border = darkMode ? '#333' : '#e8e8e8'; const textColor = darkMode ? '#d4d4d4' : '#333'
-    return <div style={{ border: `1px solid ${border}`, borderRadius: 6, marginBottom: 6, background: bg, overflow: 'hidden' }}>
-        <div onClick={() => setExpanded(!expanded)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', cursor: 'pointer', background: tool.status === 'executing' ? (darkMode ? '#1a3a5c' : '#e6f4ff') : 'transparent' }}>
-            {tool.status === 'executing' ? <LoadingOutlined style={{ fontSize: 13, color: '#1677ff', flexShrink: 0 }} /> : expanded ? <DownOutlined style={{ fontSize: 10, color: '#999', flexShrink: 0 }} /> : <RightOutlined style={{ fontSize: 10, color: '#999', flexShrink: 0 }} />}
-            {meta.icon}<Text style={{ fontSize: 12, fontWeight: 500, color: textColor }}>{meta.label}</Text><div style={{ flex: 1 }} />
-            {tool.status === 'done' && <CheckCircleOutlined style={{ fontSize: 13, color: '#52c41a' }} />}
-            {tool.status === 'error' && <CloseCircleOutlined style={{ fontSize: 13, color: '#f14c4c' }} />}
+    return <div style={{ border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 6, marginBottom: 6, background: token.colorBgContainer, overflow: 'hidden' }}>
+        <div onClick={() => setExpanded(!expanded)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 10px', cursor: 'pointer', background: tool.status === 'executing' ? token.colorPrimaryBg : 'transparent' }}>
+            {tool.status === 'executing' ? <LoadingOutlined style={{ fontSize: 13, color: token.colorPrimary, flexShrink: 0 }} /> : expanded ? <DownOutlined style={{ fontSize: 10, color: token.colorTextTertiary, flexShrink: 0 }} /> : <RightOutlined style={{ fontSize: 10, color: token.colorTextTertiary, flexShrink: 0 }} />}
+            {meta.icon}<Text style={{ fontSize: 12, fontWeight: 500, color: token.colorText }}>{meta.label}</Text><div style={{ flex: 1 }} />
+            {tool.status === 'done' && <CheckCircleOutlined style={{ fontSize: 13, color: token.colorSuccess }} />}
+            {tool.status === 'error' && <CloseCircleOutlined style={{ fontSize: 13, color: token.colorError }} />}
         </div>
-        {expanded && <div style={{ padding: '8px 10px', borderTop: `1px solid ${border}`, fontSize: 12 }}>
-            {tool.args && <><Text type="secondary" style={{ fontSize: 11 }}>{loc.tool.paramLabel}</Text><pre style={{ margin: '2px 0 6px', padding: '4px 8px', background: darkMode ? '#0d1117' : '#f6f8fa', borderRadius: 4, fontSize: 11, color: textColor, overflow: 'auto', fontFamily: "'Cascadia Code',Consolas,monospace", whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{(() => { try { return JSON.stringify(JSON.parse(tool.args), null, 2) } catch { return tool.args } })()}</pre></>}
-            {tool.status !== 'executing' && tool.result && <><Text type="secondary" style={{ fontSize: 11 }}>{tool.result.success ? loc.tool.outputLabel : loc.tool.errorLabel}</Text><pre style={{ margin: '2px 0 0', padding: '6px 8px', background: darkMode ? '#0d1117' : '#f6f8fa', borderRadius: 4, fontSize: 11, color: tool.result.success ? textColor : '#f14c4c', overflow: 'auto', maxHeight: 200, fontFamily: "'Cascadia Code',Consolas,monospace", whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{tool.result.output || tool.result.error || ''}</pre></>}
+        {expanded && <div style={{ padding: '8px 10px', borderTop: `1px solid ${token.colorBorderSecondary}`, fontSize: 12 }}>
+            {tool.args && <><Text type="secondary" style={{ fontSize: 11 }}>{loc.tool.paramLabel}</Text><pre style={{ margin: '2px 0 6px', padding: '4px 8px', background: token.colorFillContent, borderRadius: 4, fontSize: 11, color: token.colorText, overflow: 'auto', fontFamily: "'Cascadia Code',Consolas,monospace", whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{(() => { try { return JSON.stringify(JSON.parse(tool.args), null, 2) } catch { return tool.args } })()}</pre></>}
+            {tool.status !== 'executing' && tool.result && <><Text type="secondary" style={{ fontSize: 11 }}>{tool.result.success ? loc.tool.outputLabel : loc.tool.errorLabel}</Text><pre style={{ margin: '2px 0 0', padding: '6px 8px', background: token.colorFillContent, borderRadius: 4, fontSize: 11, color: tool.result.success ? token.colorText : token.colorError, overflow: 'auto', maxHeight: 200, fontFamily: "'Cascadia Code',Consolas,monospace", whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{tool.result.output || tool.result.error || ''}</pre></>}
         </div>}
     </div>
 }

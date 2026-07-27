@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Modal, Typography } from 'antd'
+import { Modal, Typography, theme } from 'antd'
 
 const { Text } = Typography
 
@@ -16,11 +16,12 @@ export interface AgentModalProps {
 }
 
 export default function AgentModal({ open, onClose, title, titleIcon, width, height, darkMode, children, footer }: AgentModalProps) {
+    const { token } = theme.useToken()
     return (
         <Modal
             open={open}
             onCancel={onClose}
-            title={title ? <span><Text style={{ color: darkMode ? '#d4d4d4' : undefined }}>{titleIcon} {title}</Text></span> : undefined}
+            title={title ? <span><Text style={{ color: token.colorText }}>{titleIcon} {title}</Text></span> : undefined}
             width={width || 520}
             style={height ? { top: 20 } : undefined}
             footer={footer ?? null}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react'
-import { Button, Tooltip, message } from 'antd'
+import { Button, Tooltip, message, theme } from 'antd'
 import { RobotOutlined, CloseOutlined, PlusOutlined, HistoryOutlined } from '@ant-design/icons'
 import { useMessageTree, type AgentMessage } from './hooks/useMessageTree'
 import { useAgentWebSocket } from './hooks/useAgentWebSocket'
@@ -76,6 +76,7 @@ export interface PanelProps {
 
 export default function FrameworkAgentPanel(props: PanelProps) {
     const { collapsed, onToggle, darkMode, toolNameLabels } = props
+    const { token } = theme.useToken()
     const mergedLocale = useMemo<AgentUILocale>(() => ({ ...defaultLocale, ...props.locale }), [props.locale])
     const msgTree = useMessageTree()
     const [sessionID, setSessionID] = useState(props.sessionID || '')
@@ -128,14 +129,6 @@ export default function FrameworkAgentPanel(props: PanelProps) {
         if (props.onClearFiles) props.onClearFiles()
     }, [inputText, ws, props.selectedFiles, props.readFileContent, props.onClearFiles])
 
-    if (collapsed) {
-        return (
-            <div style={{ width: 48, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 0', gap: 12, borderLeft: darkMode ? '1px solid #333' : '1px solid #e8e8e8', background: darkMode ? '#1e1e1e' : '#fff' }}>
-                <Tooltip title={mergedLocale.panel.title} placement="left"><Button type="text" icon={<RobotOutlined style={{ fontSize: 22, color: '#1677ff' }} />} onClick={onToggle} /></Tooltip>
-            </div>
-        )
-    }
-
     const contextValue = useMemo(() => ({
         ...mergedLocale,
         toolDisplayNames: props.toolDisplayNames,
@@ -143,13 +136,21 @@ export default function FrameworkAgentPanel(props: PanelProps) {
         darkMode,
     }), [mergedLocale, props.toolDisplayNames, props.formatModelLabel, darkMode])
 
+    if (collapsed) {
+        return (
+            <div style={{ width: 48, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 0', gap: 12, borderLeft: `1px solid ${token.colorBorderSecondary}`, background: token.colorBgContainer }}>
+                <Tooltip title={mergedLocale.panel.title} placement="left"><Button type="text" icon={<RobotOutlined style={{ fontSize: 22, color: token.colorPrimary }} />} onClick={onToggle} /></Tooltip>
+            </div>
+        )
+    }
+
     return (
         <AgentUIContext.Provider value={contextValue}>
-        <ErrorBoundary onReset={() => msgTree.clearMessages()}>
-            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', height: '100%', borderLeft: darkMode ? '1px solid #333' : '1px solid #e8e8e8', background: darkMode ? '#1e1e1e' : '#fafafa' }}>
-                <div style={{ height: 48, display: 'flex', alignItems: 'center', padding: '0 12px', borderBottom: darkMode ? '1px solid #333' : '1px solid #e8e8e8', flexShrink: 0 }}>
-                    <RobotOutlined style={{ fontSize: 18, color: '#1677ff', marginRight: 8 }} />
-                    <span style={{ flex: 1, fontWeight: 600, fontSize: 14, color: darkMode ? '#d4d4d4' : '#333' }}>{mergedLocale.panel.title}</span>
+        <ErrorBoundary onReset={() => msgTree.clearMessages()} darkMode={darkMode}>
+            <div style={{ width: '100%', display: 'flex', flexDirection: 'column', height: '100%', borderLeft: `1px solid ${token.colorBorderSecondary}`, background: token.colorBgContainer }}>
+                <div style={{ height: 48, display: 'flex', alignItems: 'center', padding: '0 12px', borderBottom: `1px solid ${token.colorBorderSecondary}`, flexShrink: 0 }}>
+                    <RobotOutlined style={{ fontSize: 18, color: token.colorPrimary, marginRight: 8 }} />
+                    <span style={{ flex: 1, fontWeight: 600, fontSize: 14, color: token.colorText }}>{mergedLocale.panel.title}</span>
                     <Tooltip title={mergedLocale.panel.history}><Button type="text" size="small" icon={<HistoryOutlined />} onClick={() => { const next = !showHistory; setShowHistory(next); if (next) props.onLoadSessions?.() }} /></Tooltip>
                     <Tooltip title={mergedLocale.panel.newSession}><Button type="text" size="small" icon={<PlusOutlined />} onClick={() => { msgTree.clearMessages(); props.onNewSession?.(); setShowHistory(false) }} /></Tooltip>
                     <Button type="text" size="small" icon={<CloseOutlined />} onClick={onToggle} />
@@ -158,7 +159,7 @@ export default function FrameworkAgentPanel(props: PanelProps) {
                 {showHistory && (
                     <div style={{ flex: 1, overflow: 'auto', padding: '12px' }}>
                         <SessionHistory sessions={sessions} darkMode={darkMode} onDeleteSession={props.onDeleteSession}
-                            onOpen={async (sid) => { props.setSessionID(sid); setShowHistory(false); if (props.onOpenSession) { msgTree.clearMessages(); const msgs = await props.onOpenSession(sid); for (const m of msgs) msgTree.addMessage(m) } }}
+                            onOpen={async (sid, sessionInfo) => { props.setSessionID(sid); setShowHistory(false); if (props.onOpenSession) { msgTree.clearMessages(); const msgs = await props.onOpenSession(sid, sessionInfo); for (const m of msgs) msgTree.addMessage(m) } }}
                             onRefresh={() => props.onLoadSessions?.()} currentSessionID={sessionID}
                             onNewSession={() => { msgTree.clearMessages(); props.onNewSession?.(); setShowHistory(false) }} />
                     </div>
@@ -169,7 +170,7 @@ export default function FrameworkAgentPanel(props: PanelProps) {
                         {props.extraPanels}
                         {questionnaireData && !sending && (
                             <QuestionnaireForm steps={questionnaireData.questions || []} initialAnswers={undefined}
-                                onComplete={(answers: string) => { ws.sendText(answers); setQuestionnaireData(null) }} />
+                                onComplete={(answers: string) => { ws.sendText(answers); setQuestionnaireData(null) }} darkMode={darkMode} />
                         )}
                         <div style={{ flex: 1, overflow: 'auto' }}>
                             <MessageList messageOrder={msgTree.messageOrder} messageMap={msgTree.messageMap}

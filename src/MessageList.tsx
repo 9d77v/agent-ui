@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef } from 'react'
 import { AgentMessage } from './hooks/useMessageTree'
 import MessageBubble from './MessageBubble'
 
@@ -18,10 +18,21 @@ export default function MessageList(props: Props) {
     const { messageOrder, messageMap, darkMode, streamingMsgId, toolNameLabels, onOpenFile, onRevertFile, onRetry, onToggleReasoning } = props
     const containerRef = useRef<HTMLDivElement>(null)
     const endRef = useRef<HTMLDivElement>(null)
-    const shouldAutoScroll = useRef(true)
-    const isNearBottom = useCallback(() => { const el = containerRef.current; if (!el) return true; return el.scrollHeight - el.scrollTop - el.clientHeight < 150 }, [])
-    useEffect(() => { const el = containerRef.current; if (!el) return; const handler = () => { shouldAutoScroll.current = isNearBottom() }; el.addEventListener('scroll', handler); return () => el.removeEventListener('scroll', handler) }, [isNearBottom])
-    useEffect(() => { if (!shouldAutoScroll.current || !isNearBottom()) return; endRef.current?.scrollIntoView({ behavior: 'auto' }) }, [messageOrder, messageMap, isNearBottom])
+    const userScrolledUp = useRef(false)
+    // 用户手动滚动时标记
+    useEffect(() => {
+        const el = containerRef.current
+        if (!el) return
+        const handler = () => { userScrolledUp.current = el.scrollHeight - el.scrollTop - el.clientHeight > 150 }
+        el.addEventListener('scroll', handler)
+        return () => el.removeEventListener('scroll', handler)
+    }, [])
+    // 消息更新时自动滚到底部
+    useEffect(() => {
+        const el = containerRef.current
+        if (!el || userScrolledUp.current) return
+        requestAnimationFrame(() => { el.scrollTop = el.scrollHeight })
+    }, [messageOrder, messageMap, streamingMsgId])
     return (
         <div ref={containerRef} style={{ height: '100%', overflow: 'auto', padding: '12px 16px' }}>
             {messageOrder.map(id => {

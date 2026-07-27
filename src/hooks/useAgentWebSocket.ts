@@ -102,9 +102,17 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
         switch (type) {
             case 'started':
                 streamIDRef.current = stream_id
+                if (data.session_id) {
+                    window.dispatchEvent(new CustomEvent('session-created', { detail: data.session_id }))
+                }
                 break
+            case 'message_end': {
+                const curId = streamingMsgIdRef.current
+                if (curId) messageTree.updateMessage(curId, msg => ({ ...msg, loading: false, showReasoning: false }))
+                break
+            }
             case 'message_start': {
-                const role = data.role || 'assistant'
+                const role = data.role || 'model'
                 if (role === 'tool') break
                 messageTree.addMessage({ id: msg_id, seq: data.seq, turnId: data.turn_id, role, content: '', reasoning: '', loading: true, showReasoning: true, toolList: [] })
                 streamingMsgIdRef.current = msg_id
@@ -152,12 +160,6 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
                 messageTree.updateMessage(curId, msg => ({
                     ...msg, toolList: (msg.toolList || []).map(t => t.callId === call_id ? { ...t, status: parsedResult.success ? 'done' as const : 'error' as const, result: parsedResult } : t)
                 }))
-                break
-            }
-            case 'file_diff': {
-                const curId = streamingMsgIdRef.current
-                if (!curId) break
-                messageTree.updateMessage(curId, msg => ({ ...msg, fileDiff: { filePath: file_path, original: original || '', modified: modified || '', backupPath: backup_path } }))
                 break
             }
             case 'approval_required':

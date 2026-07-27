@@ -1,7 +1,7 @@
 declare module 'agent-ui' {
     import type { ReactNode } from 'react'
     export interface SessionInfo { session_id: string; title: string; preview?: string; msg_count?: number; last_time?: string; token_usage?: any }
-    export interface AgentMessage { id: string; seq?: number; turnId?: string; role: 'user' | 'assistant' | 'tool'; content: string; reasoning?: string; loading?: boolean; showReasoning?: boolean; toolList?: any[]; fileDiff?: any; retryInfo?: any }
+    export interface AgentMessage { id: string; seq?: number; turnId?: string; role: 'user' | 'assistant' | 'tool' | 'model'; content: string; reasoning?: string; loading?: boolean; showReasoning?: boolean; toolList?: any[]; fileDiff?: any; retryInfo?: any }
 
     export interface PanelLocale { title: string; history: string; newSession: string }
     export interface ChatInputLocale { placeholder: string; sendTooltip: string; stopTooltip: string; addFileTooltip: string; docsAttachedTooltip: string; docsNotAttachedTooltip: string; docsLabel: string; noDocsLabel: string; manageModelsLabel: string; modelLabel: string; toolConfigTooltip: string; thinkingOff: string; thinkingDefault: string; thinkingDeep: string }

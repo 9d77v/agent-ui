@@ -12,13 +12,12 @@ export interface AgentMessage {
     id: string
     seq?: number
     turnId?: string
-    role: 'user' | 'assistant' | 'tool'
+    role: 'user' | 'assistant' | 'tool' | 'model'
     content: string
     reasoning?: string
     loading?: boolean
     showReasoning?: boolean
     toolList?: ToolCallEntry[]
-    fileDiff?: { filePath: string; original: string; modified: string; backupPath: string }
     retryInfo?: {
         messageId: string; sessionId: string; message: string
         model: string; providerId: string; mode: string; thinking: string

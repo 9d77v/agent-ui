@@ -1,4 +1,4 @@
-import { Button, Popconfirm, Space, Typography, message } from 'antd'
+import { Button, Popconfirm, Space, Typography, message, theme } from 'antd'
 import { DeleteOutlined } from '@ant-design/icons'
 import { useAgentLocale } from './locale/index'
 const { Text } = Typography
@@ -7,13 +7,14 @@ interface Session { session_id: string; title: string; preview?: string; msg_cou
 interface Props { sessions: Session[]; darkMode?: boolean; onOpen: (sid: string, sessionInfo?: any) => void; onRefresh: () => void; currentSessionID: string; onNewSession: () => void; onDeleteSession?: (sessionID: string) => Promise<{ success: boolean; error?: string }> }
 
 export default function SessionHistory({ sessions, darkMode, onOpen, onRefresh, currentSessionID, onNewSession, onDeleteSession }: Props) {
+    const { token } = theme.useToken()
     const loc = useAgentLocale()
     return <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <Text strong style={{ color: darkMode ? '#d4d4d4' : '#333' }}>{loc.panel.history}</Text>
+            <Text strong style={{ color: token.colorText }}>{loc.panel.history}</Text>
         </div>
         {sessions.length === 0 ? <Text type="secondary">{loc.session.noHistory}</Text> : sessions.map(s => (
-            <div key={s.session_id} style={{ padding: '10px 12px', marginBottom: 8, borderRadius: 8, cursor: 'pointer', background: darkMode ? '#2d2d2d' : '#fafafa', border: `1px solid ${darkMode ? '#333' : '#f0f0f0'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div key={s.session_id} style={{ padding: '10px 12px', marginBottom: 8, borderRadius: 8, cursor: 'pointer', background: token.colorFillAlter, border: `1px solid ${token.colorBorderSecondary}`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1, minWidth: 0 }} onClick={() => onOpen(s.session_id, s)}>
                     <Text style={{ fontSize: 13, display: 'block', marginBottom: 2, fontWeight: 500 }}>{s.title || loc.session.untitled}</Text>
                     <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>{s.preview || loc.session.noMessages}</Text>
