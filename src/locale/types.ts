@@ -11,6 +11,7 @@ export interface ChatInputLocale {
     sendTooltip: string
     stopTooltip: string
     addFileTooltip: string
+    addImageTooltip: string
     docsAttachedTooltip: string
     docsNotAttachedTooltip: string
     docsLabel: string
@@ -28,6 +29,8 @@ export interface MessageLocale {
     reasoningTitle: string
     thinkingLabel: string
     retryButton: string
+    continueButton: string
+    maxIterationsNote: string
     truncatedSuffix: string
     fileChangeLabel: string
     revertButton: string

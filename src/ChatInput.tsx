@@ -1,5 +1,5 @@
 import { Input, Button, Select, Tooltip, Dropdown, Typography, Space, theme } from 'antd'
-import { CheckOutlined, SettingOutlined, FileAddOutlined, ToolOutlined, PauseCircleOutlined, EnterOutlined } from '@ant-design/icons'
+import { CheckOutlined, SettingOutlined, FileAddOutlined, PictureOutlined, CloseOutlined, ToolOutlined, PauseCircleOutlined, EnterOutlined } from '@ant-design/icons'
 import { useAgentLocale } from './locale/index'
 
 const { Text } = Typography
@@ -13,6 +13,9 @@ export interface ChatInputProps {
     currentModel?: string; onModelChange?: (v: string) => void; onManageModels?: () => void
     thinking?: string; onThinkingChange?: (v: string) => void; onToolConfigOpen?: () => void
     selectedFiles?: { path: string; startLine?: number; endLine?: number }[]
+    selectedImages?: { path: string; name: string; data: string }[]
+    onAddImageOpen?: () => void
+    onRemoveImage?: (index: number) => void
 }
 
 export default function ChatInput(p: ChatInputProps) {
@@ -36,17 +39,31 @@ export default function ChatInput(p: ChatInputProps) {
                     ))}
                 </div>
             )}
+            {p.selectedImages && p.selectedImages.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, padding: '4px 8px 0' }}>
+                    {p.selectedImages.map((img, i) => (
+                        <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 6px', borderRadius: 4, fontSize: 11, background: token.colorFillAlter, color: token.colorPrimary, maxWidth: 180 }}>
+                            <img src={`data:image/webp;base64,${img.data}`} alt={img.name} style={{ width: 18, height: 18, objectFit: 'cover', borderRadius: 3 }} />
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{img.name}</span>
+                            <CloseOutlined style={{ cursor: 'pointer', fontSize: 10, color: token.colorTextTertiary }} onClick={() => p.onRemoveImage?.(i)} />
+                        </span>
+                    ))}
+                </div>
+            )}
             <div style={{ display: 'flex', alignItems: 'center', padding: '4px 8px' }}>
                 <TextArea value={inputText} onChange={e => onInputChange(e.target.value)} onKeyDown={onKeyDown}
                     placeholder={loc.chatInput.placeholder} autoSize={{ minRows: 2, maxRows: 6 }} disabled={sending}
                     variant="borderless" style={{ flex: 1, background: 'transparent', padding: '8px 0 8px 10px', resize: 'none', fontSize: 13 }} />
                 <div style={{ padding: '4px 6px 4px 0', flexShrink: 0 }}>
                     {sending ? <Tooltip title={loc.chatInput.stopTooltip}><Button shape="circle" size="small" danger icon={<PauseCircleOutlined style={{ fontSize: 16 }} />} onClick={onCancel} /></Tooltip>
-                        : <Tooltip title={loc.chatInput.sendTooltip}><Button type="primary" shape="circle" size="small" icon={<EnterOutlined style={{ fontSize: 16 }} />} onClick={onSend} disabled={!inputText.trim()} /></Tooltip>}
+                        : <Tooltip title={loc.chatInput.sendTooltip}><Button type="primary" shape="circle" size="small" icon={<EnterOutlined style={{ fontSize: 16 }} />} onClick={onSend} disabled={!inputText.trim() && !(p.selectedImages && p.selectedImages.length > 0)} /></Tooltip>}
                 </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', borderTop: `1px solid ${token.colorBorderSecondary}`, gap: 2 }}>
                 <Tooltip title={loc.chatInput.addFileTooltip}><Button type="text" size="small" icon={<FileAddOutlined />} onClick={p.onFilePickerOpen} /></Tooltip>
+                {p.onAddImageOpen && (
+                    <Tooltip title={loc.chatInput.addImageTooltip}><Button type="text" size="small" icon={<PictureOutlined />} onClick={p.onAddImageOpen} /></Tooltip>
+                )}
                 {p.onToggleDocs && <Tooltip title={p.includeProjectDocs ? loc.chatInput.docsAttachedTooltip : loc.chatInput.docsNotAttachedTooltip}>
                     <Button type="text" size="small" icon={<span style={{ fontSize: 13 }}>📄</span>} onClick={p.onToggleDocs} style={{ color: p.includeProjectDocs ? token.colorPrimary : token.colorTextTertiary, fontSize: 12 }}>{p.includeProjectDocs ? loc.chatInput.docsLabel : loc.chatInput.noDocsLabel}</Button>
                 </Tooltip>}

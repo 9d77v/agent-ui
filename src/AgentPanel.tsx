@@ -63,6 +63,10 @@ export interface PanelProps {
     selectedFiles?: { path: string; startLine?: number; endLine?: number }[]
     readFileContent?: (path: string, startLine?: number, endLine?: number) => Promise<any>
     onClearFiles?: () => void
+    selectedImages?: { path: string; name: string; data: string }[]
+    onAddImageOpen?: () => void
+    onRemoveImage?: (index: number) => void
+    onClearImages?: () => void
     sessions?: SessionInfo[]
     onLoadSessions?: () => Promise<void>
     onOpenSession?: (sid: string, sessionInfo?: SessionInfo) => Promise<AgentMessage[]>
@@ -107,7 +111,8 @@ export default function FrameworkAgentPanel(props: PanelProps) {
     useEffect(() => { setQuestionnaireData(ws.questionnaireData) }, [ws.questionnaireData])
 
     const handleSend = useCallback(async () => {
-        if (!inputText.trim()) { message.warning(mergedLocale.chatInput.placeholder); return }
+        const images = props.selectedImages || []
+        if (!inputText.trim() && images.length === 0) { message.warning(mergedLocale.chatInput.placeholder); return }
         if (ws.sending) return
         let fullText = inputText
         const files = props.selectedFiles || []
@@ -125,9 +130,10 @@ export default function FrameworkAgentPanel(props: PanelProps) {
             if (contents.length > 0) fullText = inputText + '\n\n---\n' + contents.join('\n\n')
         }
         setInputText('')
-        ws.sendText(fullText)
+        ws.sendText(fullText, images.map(img => ({ data: img.data, mime: 'image/webp' })))
         if (props.onClearFiles) props.onClearFiles()
-    }, [inputText, ws, props.selectedFiles, props.readFileContent, props.onClearFiles])
+        if (props.onClearImages) props.onClearImages()
+    }, [inputText, ws, props.selectedFiles, props.readFileContent, props.onClearFiles, props.selectedImages, props.onClearImages])
 
     const contextValue = useMemo(() => ({
         ...mergedLocale,
@@ -172,10 +178,11 @@ export default function FrameworkAgentPanel(props: PanelProps) {
                             <QuestionnaireForm steps={questionnaireData.questions || []} initialAnswers={undefined}
                                 onComplete={(answers: string) => { ws.sendText(answers); setQuestionnaireData(null) }} darkMode={darkMode} />
                         )}
-                        <div style={{ flex: 1, overflow: 'auto' }}>
+                        <div style={{ flex: 1, overflow: 'hidden' }}>
                             <MessageList messageOrder={msgTree.messageOrder} messageMap={msgTree.messageMap}
-                                darkMode={darkMode} streamingMsgId={ws.streamingMsgIdRef.current} toolNameLabels={toolNameLabels}
+                                darkMode={darkMode} streamingMsgId={ws.streamingMsgId} toolNameLabels={toolNameLabels}
                                 onOpenFile={ws.handleOpenFile} onRevertFile={ws.handleRevertFile} onRetry={ws.handleRetry}
+                                onContinue={ws.handleContinue}
                                 onToggleReasoning={(msgId, collapsed) => msgTree.updateMessage(msgId, msg => ({ ...msg, showReasoning: !collapsed }))} />
                         </div>
                     </>
@@ -198,7 +205,10 @@ export default function FrameworkAgentPanel(props: PanelProps) {
                             onFilePickerOpen={props.filePicker ? () => setFilePickerOpen(true) : (props.onFilePickerOpen || (() => {}))}
                             includeProjectDocs={props.includeProjectDocs !== undefined ? props.includeProjectDocs : true}
                             onToggleDocs={props.onToggleDocs} onToolConfigOpen={props.toolConfig ? () => setToolConfigOpen(true) : (props.onToolConfigOpen || (() => {}))}
-                            selectedFiles={props.selectedFiles} />
+                            selectedFiles={props.selectedFiles}
+                            selectedImages={props.selectedImages}
+                            onAddImageOpen={props.onAddImageOpen}
+                            onRemoveImage={props.onRemoveImage} />
                         <ApprovalStatusBar approvalMode={approvalMode} onModeChange={setApprovalMode}
                             tokenUsage={props.tokenUsage || null} currentContextWindow={props.currentContextWindow || 0} darkMode={darkMode} />
                     </>

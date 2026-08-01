@@ -29,6 +29,10 @@ export type { ToolCallItem } from './ToolCallCard'
 export { default as ToolTimeline } from './ToolTimeline'
 export type { TimelineToolItem } from './ToolTimeline'
 
+export { debounce, createModelConfigProvider } from './utils'
+export { default as LLMConfigPanel, PROVIDER_PRESETS } from './LLMConfigPanel'
+export type { LLMConfigPanelProps, LLMConfigPanelAPI, LLMProviderItem, ModelInfoItem } from './LLMConfigPanel'
+
 export { default as CommandApproval } from './CommandApproval'
 export { default as ApprovalStatusBar } from './ApprovalStatusBar'
 export { default as SessionHistory } from './SessionHistory'

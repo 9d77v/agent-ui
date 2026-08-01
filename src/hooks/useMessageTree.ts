@@ -17,6 +17,7 @@ export interface AgentMessage {
     reasoning?: string
     loading?: boolean
     showReasoning?: boolean
+    needsContinue?: boolean
     toolList?: ToolCallEntry[]
     retryInfo?: {
         messageId: string; sessionId: string; message: string
