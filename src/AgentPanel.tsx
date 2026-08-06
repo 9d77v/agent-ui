@@ -33,6 +33,8 @@ export interface PanelProps {
     /** 模型显示名格式化函数。默认：含 || 时取后半部分 */
     formatModelLabel?: (modelValue: string) => string
     extraPanels?: ReactNode
+    /** 渲染在输入区上方的面板（如会话待办清单），位于 MessageList/审批之后、ChatInput 之前 */
+    bottomPanels?: ReactNode
     /** 工具配置（传入则渲染内置 ToolConfigModal） */
     toolConfig?: {
         tree: ToolTreeNode[]
@@ -197,6 +199,7 @@ export default function FrameworkAgentPanel(props: PanelProps) {
                                 onApprove={() => ws.handleApproveTool(pendingApproval.approvalId)}
                                 onReject={() => ws.handleRejectTool(pendingApproval.approvalId)} darkMode={darkMode} />
                         )}
+                        {props.bottomPanels}
                         <ChatInput inputText={inputText} onInputChange={setInputText} onSend={handleSend}
                             sending={ws.sending} onCancel={ws.handleCancel}
                             onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}

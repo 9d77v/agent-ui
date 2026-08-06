@@ -165,6 +165,10 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
                 cleanup()
                 break
             }
+            case 'todo_updated':
+                // 会话待办清单更新：dispatch 自定义事件，由宿主应用（hhy-code AgentPanel）监听渲染
+                window.dispatchEvent(new CustomEvent('todo-update', { detail: data.todos }))
+                break
             case 'terminal_output':
                 window.dispatchEvent(new CustomEvent('agent-terminal-data', { detail: { text, is_stderr } }))
                 break

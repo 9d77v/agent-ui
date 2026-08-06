@@ -38,6 +38,7 @@ declare module 'agent-ui' {
         locale?: Partial<AgentUILocale>
         formatModelLabel?: (modelValue: string) => string
         extraPanels?: ReactNode
+        bottomPanels?: ReactNode
         toolConfig?: { tree: ToolTreeNode[]; enabled?: Record<string, boolean>; onChange?: (enabledKeys: string[]) => void }
         filePicker?: { onSearch: (query: string) => Promise<string[]>; onSelect: (filePath: string) => void }
         sessionID: string; setSessionID: (id: string) => void
