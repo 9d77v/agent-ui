@@ -7,7 +7,11 @@ declare module 'agent-ui' {
     export interface ChatInputLocale { placeholder: string; sendTooltip: string; stopTooltip: string; addFileTooltip: string; addImageTooltip: string; docsAttachedTooltip: string; docsNotAttachedTooltip: string; docsLabel: string; noDocsLabel: string; manageModelsLabel: string; modelLabel: string; toolConfigTooltip: string; thinkingOff: string; thinkingDefault: string; thinkingDeep: string }
     export interface MessageLocale { reasoningTitle: string; thinkingLabel: string; retryButton: string; continueButton: string; maxIterationsNote: string; truncatedSuffix: string; fileChangeLabel: string; revertButton: string }
     export interface ToolLocale { paramLabel: string; outputLabel: string; errorLabel: string; executingStatus: string; completedStatus: string; stepsLabel: string }
-    export interface ApprovalLocale { riskLevelDangerous: string; riskLevelModerate: string; riskLevelSafe: string; requiredTitle: string; skipButton: string; confirmButton: string; modeAuto: string; modeDefault: string; modeManual: string }
+    export interface ApprovalLocale { riskLevelDangerous: string; riskLevelModerate: string; riskLevelSafe: string; requiredTitle: string; skipButton: string; confirmButton: string; modeAuto: string; modeDefault: string; modeManual: string; allowButton: string; commandTitle: string; fileTitle: string; toolTitle: string; commandDesc: string; fileDesc: string; toolDesc: string; hiddenLines: string; collapse: string }
+    export type ApprovalKind = 'command' | 'file' | 'tool'
+    export interface ParsedApproval { kind: ApprovalKind; filePath: string; display: string }
+    export function parseApproval(command: string): ParsedApproval
+    export function languageBadge(filePath: string): string
     export interface SessionLocale { title: string; noHistory: string; untitled: string; noMessages: string; deleteConfirm: string; deleted: string; deleteFailed: string; deleteButton: string; cancelButton: string }
     export interface QuestionnaireLocale { myAnswer: string; confirmSelection: string; backToEdit: string; submit: string; notSelected: string; customAnswerPlaceholder: string; inputPlaceholder: string }
     export interface ErrorLocale { title: string; reload: string }

@@ -134,6 +134,7 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
             case 'approval_required':
                 // 同步更新 ref：approval_required 与 turn_complete 可能同批到达，
                 // 若依赖 useEffect 延迟同步，turn_complete 会误判"无待审"而清空卡片并关 WS
+                console.log('[WS] approval_required received', approval_id, 'pendingRef=', pendingApprovalsRef.current)
                 pendingApprovalsRef.current += 1
                 setPendingApprovals(prev => [...prev, { approvalId: approval_id, command: content || text || command || '', riskLevel: risk_level }])
                 break
@@ -148,6 +149,7 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
                 if (data.session_id) window.dispatchEvent(new CustomEvent('session-created', { detail: data.session_id }))
                 // ADK 原生 HITL：本轮因审批已暂停。有待审时保活 WS、保留 streamingMsgIdRef 与审批卡片，
                 // 等待用户决定后由后端开 resume 流（工具结果靠 call_id 跨消息匹配）
+                console.log('[WS] turn_complete pendingRef=', pendingApprovalsRef.current)
                 if (pendingApprovalsRef.current > 0) break
                 setStreaming(null)
                 setPendingApprovals([])
@@ -210,6 +212,7 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
             }
 
             ws.onclose = () => {
+                console.log('[WS] closed')
                 if (pingRef.current) clearInterval(pingRef.current)
                 setSending(false)
                 wsRef.current = null

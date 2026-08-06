@@ -57,6 +57,16 @@ export interface ApprovalLocale {
     modeAuto: string
     modeDefault: string
     modeManual: string
+    /** VSCode 风格批准卡片文案 */
+    allowButton: string
+    commandTitle: string
+    fileTitle: string
+    toolTitle: string
+    commandDesc: string
+    fileDesc: string
+    toolDesc: string
+    hiddenLines: string
+    collapse: string
 }
 
 /** 会话历史 */
