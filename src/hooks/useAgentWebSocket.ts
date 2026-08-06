@@ -42,6 +42,9 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
     const [sending, setSending] = useState(false)
     const [streamingMsgId, setStreamingMsgId] = useState<string | null>(null)
     const [pendingApprovals, setPendingApprovals] = useState<{ approvalId: string; command: string; riskLevel: string }[]>([])
+    // 待审数量 ref（供 handleWsMessage 判断 turn_complete 时是否保活 WS 与审批卡片）
+    const pendingApprovalsRef = useRef(0)
+    useEffect(() => { pendingApprovalsRef.current = pendingApprovals.length }, [pendingApprovals])
     const [questionnaireData, setQuestionnaireData] = useState<{ id: string; questions: any[] } | null>(null)
 
     const { messageTree, sessionID, currentModel, activeProviderId, thinking, approvalMode, includeProjectDocs, getWebSocketURL } = input
@@ -56,6 +59,7 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
         if (pingRef.current) clearInterval(pingRef.current)
         setSending(false)
         setStreamingMsgId(null)
+        pendingApprovalsRef.current = 0
         setPendingApprovals([])
         setQuestionnaireData(null)
         if (wsRef.current) { wsRef.current.close(); wsRef.current = null }
@@ -113,23 +117,24 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
                 messageTree.updateMessage(curId, msg => ({ ...msg, toolList: (msg.toolList || []).map(t => t.callId === call_id ? { ...t, args: tool_args } : t) }))
                 break
             }
-            case 'tool_executing': {
-                const curId = streamingMsgIdRef.current
-                if (!curId) break
-                messageTree.updateMessage(curId, msg => ({ ...msg, toolList: (msg.toolList || []).map(t => t.callId === call_id ? { ...t, status: 'executing' as const } : t) }))
+            case 'tool_executing':
+                // 跨消息按 call_id 更新（函数式更新拿最新 map，规避 WS onmessage 闭包过期）
+                messageTree.updateToolByCallId(call_id, tool => ({ ...tool, status: 'executing' as const }))
                 break
-            }
             case 'tool_result': {
-                const curId = streamingMsgIdRef.current
-                if (!curId) break
                 let parsedResult: any = { success: false }
                 try { parsedResult = JSON.parse(data.tool_args || '{}') } catch {}
-                messageTree.updateMessage(curId, msg => ({
-                    ...msg, toolList: (msg.toolList || []).map(t => t.callId === call_id ? { ...t, status: parsedResult.success ? 'done' as const : 'error' as const, result: parsedResult } : t)
+                // 跨消息按 call_id 更新：审批恢复/resume 流中 streamingMsgId 可能指向新消息，
+                // 用函数式更新保证在最新 messageMap 上定位工具（否则状态停留在 executing）
+                messageTree.updateToolByCallId(call_id, tool => ({
+                    ...tool, status: parsedResult.success ? 'done' as const : 'error' as const, result: parsedResult
                 }))
                 break
             }
             case 'approval_required':
+                // 同步更新 ref：approval_required 与 turn_complete 可能同批到达，
+                // 若依赖 useEffect 延迟同步，turn_complete 会误判"无待审"而清空卡片并关 WS
+                pendingApprovalsRef.current += 1
                 setPendingApprovals(prev => [...prev, { approvalId: approval_id, command: content || text || command || '', riskLevel: risk_level }])
                 break
             case 'questionnaire_request':
@@ -139,10 +144,13 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
                 try { window.dispatchEvent(new CustomEvent('token-usage-update', { detail: JSON.parse(data.tool_args || '{}') })) } catch {}
                 break
             case 'turn_complete':
-                setPendingApprovals([])
                 if (streamingMsgIdRef.current) messageTree.updateMessage(streamingMsgIdRef.current, msg => ({ ...msg, loading: false, showReasoning: false }))
-                setStreaming(null)
                 if (data.session_id) window.dispatchEvent(new CustomEvent('session-created', { detail: data.session_id }))
+                // ADK 原生 HITL：本轮因审批已暂停。有待审时保活 WS、保留 streamingMsgIdRef 与审批卡片，
+                // 等待用户决定后由后端开 resume 流（工具结果靠 call_id 跨消息匹配）
+                if (pendingApprovalsRef.current > 0) break
+                setStreaming(null)
+                setPendingApprovals([])
                 cleanup()
                 break
             case 'error': {
@@ -250,14 +258,23 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
     }, [])
 
     const handleApproveTool = useCallback((approvalId: string) => {
-        sendWsMessage({ type: 'approve_tool', approval_id: approvalId })
-        setPendingApprovals(prev => prev.filter(a => a.approvalId !== approvalId))
-    }, [sendWsMessage])
+        // 携带 session_id：后端据此启动审批恢复流（ADK 原生 HITL resume）
+        sendWsMessage({ type: 'approve_tool', approval_id: approvalId, session_id: sessionID })
+        setPendingApprovals(prev => {
+            const next = prev.filter(a => a.approvalId !== approvalId)
+            pendingApprovalsRef.current = next.length
+            return next
+        })
+    }, [sendWsMessage, sessionID])
 
     const handleRejectTool = useCallback((approvalId: string) => {
-        sendWsMessage({ type: 'reject_tool', approval_id: approvalId })
-        setPendingApprovals(prev => prev.filter(a => a.approvalId !== approvalId))
-    }, [sendWsMessage])
+        sendWsMessage({ type: 'reject_tool', approval_id: approvalId, session_id: sessionID })
+        setPendingApprovals(prev => {
+            const next = prev.filter(a => a.approvalId !== approvalId)
+            pendingApprovalsRef.current = next.length
+            return next
+        })
+    }, [sendWsMessage, sessionID])
 
     const handleRevertFile = useCallback((filePath: string, backupPath: string) => {
         sendWsMessage({ type: 'revert_file', file_path: filePath, backup_path: backupPath })

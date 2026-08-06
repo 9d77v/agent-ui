@@ -42,7 +42,15 @@ export default function ToolCallCard({ tool, darkMode, defaultExpanded }: { tool
             {tool.status === 'error' && <CloseCircleOutlined style={{ fontSize: 13, color: token.colorError }} />}
         </div>
         {expanded && <div style={{ padding: '8px 10px', borderTop: `1px solid ${token.colorBorderSecondary}`, fontSize: 12 }}>
-            {tool.args && <><Text type="secondary" style={{ fontSize: 11 }}>{loc.tool.paramLabel}</Text><pre style={{ margin: '2px 0 6px', padding: '4px 8px', background: token.colorFillContent, borderRadius: 4, fontSize: 11, color: token.colorText, overflow: 'auto', fontFamily: "'Cascadia Code',Consolas,monospace", whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{(() => { try { return JSON.stringify(JSON.parse(tool.args), null, 2) } catch { return tool.args } })()}</pre></>}
+            {tool.args && <><Text type="secondary" style={{ fontSize: 11 }}>{loc.tool.paramLabel}</Text><pre style={{ margin: '2px 0 6px', padding: '4px 8px', background: token.colorFillContent, borderRadius: 4, fontSize: 11, color: token.colorText, overflow: 'auto', fontFamily: "'Cascadia Code',Consolas,monospace", whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{(() => {
+                let obj: any = null
+                try { obj = JSON.parse(tool.args) } catch { return tool.args }
+                // 命令工具只展示实际执行的命令，不暴露内部参数（command/explanation/goal 等）
+                if (tool.name === 'run_command' && typeof obj?.command === 'string') {
+                    return '$ ' + obj.command
+                }
+                return JSON.stringify(obj, null, 2)
+            })()}</pre></>}
             {tool.status !== 'executing' && tool.result && <><Text type="secondary" style={{ fontSize: 11 }}>{tool.result.success ? loc.tool.outputLabel : loc.tool.errorLabel}</Text><pre style={{ margin: '2px 0 0', padding: '6px 8px', background: token.colorFillContent, borderRadius: 4, fontSize: 11, color: tool.result.success ? token.colorText : token.colorError, overflow: 'auto', maxHeight: 200, fontFamily: "'Cascadia Code',Consolas,monospace", whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{tool.result.output || tool.result.error || ''}</pre></>}
         </div>}
     </div>
