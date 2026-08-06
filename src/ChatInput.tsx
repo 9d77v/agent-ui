@@ -13,7 +13,7 @@ export interface ChatInputProps {
     currentModel?: string; onModelChange?: (v: string) => void; onManageModels?: () => void
     thinking?: string; onThinkingChange?: (v: string) => void; onToolConfigOpen?: () => void
     selectedFiles?: { path: string; startLine?: number; endLine?: number }[]
-    selectedImages?: { path: string; name: string; data: string }[]
+    selectedImages?: { url: string; name: string }[]
     onAddImageOpen?: () => void
     onRemoveImage?: (index: number) => void
 }
@@ -42,8 +42,8 @@ export default function ChatInput(p: ChatInputProps) {
             {p.selectedImages && p.selectedImages.length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, padding: '4px 8px 0' }}>
                     {p.selectedImages.map((img, i) => (
-                        <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 6px', borderRadius: 4, fontSize: 11, background: token.colorFillAlter, color: token.colorPrimary, maxWidth: 180 }}>
-                            <img src={`data:image/webp;base64,${img.data}`} alt={img.name} style={{ width: 18, height: 18, objectFit: 'cover', borderRadius: 3 }} />
+                        <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 6px', borderRadius: 4, fontSize: 11, background: token.colorFillAlter, color: token.colorPrimary, maxWidth: 200 }}>
+                            <img src={img.url} alt={img.name} style={{ width: 22, height: 22, objectFit: 'cover', borderRadius: 3 }} />
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{img.name}</span>
                             <CloseOutlined style={{ cursor: 'pointer', fontSize: 10, color: token.colorTextTertiary }} onClick={() => p.onRemoveImage?.(i)} />
                         </span>
@@ -56,7 +56,7 @@ export default function ChatInput(p: ChatInputProps) {
                     variant="borderless" style={{ flex: 1, background: 'transparent', padding: '8px 0 8px 10px', resize: 'none', fontSize: 13 }} />
                 <div style={{ padding: '4px 6px 4px 0', flexShrink: 0 }}>
                     {sending ? <Tooltip title={loc.chatInput.stopTooltip}><Button shape="circle" size="small" danger icon={<PauseCircleOutlined style={{ fontSize: 16 }} />} onClick={onCancel} /></Tooltip>
-                        : <Tooltip title={loc.chatInput.sendTooltip}><Button type="primary" shape="circle" size="small" icon={<EnterOutlined style={{ fontSize: 16 }} />} onClick={onSend} disabled={!inputText.trim() && !(p.selectedImages && p.selectedImages.length > 0)} /></Tooltip>}
+                        : <Tooltip title={loc.chatInput.sendTooltip}><Button type="primary" shape="circle" size="small" icon={<EnterOutlined style={{ fontSize: 16 }} />} onClick={onSend} disabled={!inputText.trim() && !(p.selectedImages && p.selectedImages.length > 0) && !(p.selectedFiles && p.selectedFiles.length > 0)} /></Tooltip>}
                 </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', borderTop: `1px solid ${token.colorBorderSecondary}`, gap: 2 }}>

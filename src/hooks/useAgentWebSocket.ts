@@ -16,7 +16,7 @@ interface WsInput {
 }
 
 interface WsOutput {
-    sendText: (text: string, images?: { data: string; mime?: string }[]) => void
+    sendText: (text: string, images?: { url: string }[]) => void
     sending: boolean
     wsRef: React.MutableRefObject<WebSocket | null>
     streamingMsgIdRef: React.MutableRefObject<string | null>
@@ -156,7 +156,12 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
                     if (wsRef.current) { wsRef.current.close(); wsRef.current = null }
                     break
                 }
-                if (curId) messageTree.updateMessage(curId, msg => ({ ...msg, loading: false, content: msg.content + `\n\n⚠️ ${error}` }))
+                if (curId) {
+                    messageTree.updateMessage(curId, msg => ({ ...msg, loading: false, content: msg.content + `\n\n⚠️ ${error}` }))
+                } else {
+                    // 流尚未开始（如 VL 预处理/鉴权失败）：错误无处展示，用 toast 兜底
+                    message.error(error || '请求失败')
+                }
                 cleanup()
                 break
             }
@@ -209,7 +214,7 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
         }
     }, [getWebSocketURL, handleWsMessage])
 
-    const sendText = useCallback(async (text: string, images?: { data: string; mime?: string }[]) => {
+    const sendText = useCallback(async (text: string, images?: { url: string }[]) => {
         const userMsgId = 'user_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)
         messageTree.addMessage({ id: userMsgId, role: 'user', content: text || (images && images.length > 0 ? '🖼 [图片]' : ''), loading: false })
 
@@ -221,7 +226,7 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
             approval_mode: approvalMode, include_project_docs: includeProjectDocs,
         }
         if (images && images.length > 0) {
-            payload.images = images.map(img => ({ data: img.data, mime: img.mime || 'image/webp' }))
+            payload.images = images.map(img => ({ url: img.url }))
         }
         await openStream(payload)
     }, [sessionID, currentModel, activeProviderId, thinking, approvalMode, includeProjectDocs, messageTree, openStream])

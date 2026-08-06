@@ -63,7 +63,7 @@ export interface PanelProps {
     selectedFiles?: { path: string; startLine?: number; endLine?: number }[]
     readFileContent?: (path: string, startLine?: number, endLine?: number) => Promise<any>
     onClearFiles?: () => void
-    selectedImages?: { path: string; name: string; data: string }[]
+    selectedImages?: { url: string; name: string }[]
     onAddImageOpen?: () => void
     onRemoveImage?: (index: number) => void
     onClearImages?: () => void
@@ -112,10 +112,11 @@ export default function FrameworkAgentPanel(props: PanelProps) {
 
     const handleSend = useCallback(async () => {
         const images = props.selectedImages || []
-        if (!inputText.trim() && images.length === 0) { message.warning(mergedLocale.chatInput.placeholder); return }
+        const files = props.selectedFiles || []
+        // 空请求拦截：文字、图片、文件三者都为空才禁止发送
+        if (!inputText.trim() && images.length === 0 && files.length === 0) { message.warning(mergedLocale.chatInput.placeholder); return }
         if (ws.sending) return
         let fullText = inputText
-        const files = props.selectedFiles || []
         if (files.length > 0 && props.readFileContent) {
             const contents: string[] = []
             for (const f of files) {
@@ -130,7 +131,7 @@ export default function FrameworkAgentPanel(props: PanelProps) {
             if (contents.length > 0) fullText = inputText + '\n\n---\n' + contents.join('\n\n')
         }
         setInputText('')
-        ws.sendText(fullText, images.map(img => ({ data: img.data, mime: 'image/webp' })))
+        ws.sendText(fullText, images.map(img => ({ url: img.url })))
         if (props.onClearFiles) props.onClearFiles()
         if (props.onClearImages) props.onClearImages()
     }, [inputText, ws, props.selectedFiles, props.readFileContent, props.onClearFiles, props.selectedImages, props.onClearImages])

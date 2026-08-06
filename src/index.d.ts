@@ -49,7 +49,7 @@ declare module 'agent-ui' {
         selectedFiles?: { path: string; startLine?: number; endLine?: number }[]
         readFileContent?: (path: string, startLine?: number, endLine?: number) => Promise<any>
         onClearFiles?: () => void
-        selectedImages?: { path: string; name: string; data: string }[]
+        selectedImages?: { url: string; name: string }[]
         onAddImageOpen?: () => void
         onRemoveImage?: (index: number) => void
         onClearImages?: () => void
