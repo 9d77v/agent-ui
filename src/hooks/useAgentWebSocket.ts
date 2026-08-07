@@ -179,6 +179,15 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
                 // 会话待办清单更新：dispatch 自定义事件，由宿主应用（hhy-code AgentPanel）监听渲染
                 window.dispatchEvent(new CustomEvent('todo-update', { detail: data.todos }))
                 break
+            case 'file_changed':
+                // Agent 会话文件变动（临时变动列表数据源）：dispatch 自定义事件，由宿主应用（hhy-code ChangedFiles）监听渲染
+                window.dispatchEvent(new CustomEvent('file-change', { detail: {
+                    session_id: data.session_id, file_path: data.file_path,
+                    original: data.original, modified: data.modified,
+                    is_new: data.is_new, added: data.added, deleted: data.deleted,
+                    removed: data.removed,
+                } }))
+                break
             case 'terminal_output':
                 window.dispatchEvent(new CustomEvent('agent-terminal-data', { detail: { text, is_stderr } }))
                 break

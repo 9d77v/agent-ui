@@ -25,7 +25,7 @@ export const zhLocale: AgentUILocale = {
         thinkingDeep: '深度',
     },
     message: {
-        reasoningTitle: '思考过程',
+        reasoningTitle: '思考内容',
         thinkingLabel: '思考中...',
         retryButton: '重试',
         continueButton: '继续执行',

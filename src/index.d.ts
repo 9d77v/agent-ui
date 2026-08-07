@@ -69,6 +69,52 @@ declare module 'agent-ui' {
     export function FrameworkAgentPanel(props: PanelProps): JSX.Element
     export default FrameworkAgentPanel
 
+    // ---- Message 组件 ----
+    export interface MessageBubbleProps {
+        msg: AgentMessage
+        darkMode?: boolean
+        streamingMsgId?: string | null
+        toolNameLabels?: Record<string, string>
+        onOpenFile: (path: string) => void
+        onRevertFile: (path: string, backupPath: string) => void
+        onRetry: (retryInfo: any) => void
+        onContinue: () => void
+        onToggleReasoning: (msgId: string, collapsed: boolean) => void
+    }
+    export const MessageBubble: React.FC<MessageBubbleProps>
+
+    export interface MessageListProps {
+        messageOrder: string[]
+        messageMap: Record<string, AgentMessage>
+        darkMode?: boolean
+        streamingMsgId?: string | null
+        toolNameLabels?: Record<string, string>
+        onOpenFile: (path: string) => void
+        onRevertFile: (path: string, backupPath: string) => void
+        onRetry: (retryInfo: any) => void
+        onContinue: () => void
+        onToggleReasoning: (msgId: string, collapsed: boolean) => void
+    }
+    export const MessageList: React.FC<MessageListProps>
+
+    // ---- Token 进度 ----
+    export interface TokenUsage {
+        prompt_tokens?: number
+        completion_tokens?: number
+        total_tokens?: number
+        cached_tokens?: number
+        context_window?: number
+        reserved_tokens?: number
+        system_tokens?: number
+        tools_tokens?: number
+        messages_tokens?: number
+        tool_results_tokens?: number
+    }
+    export interface TokenProgressProps { tokenUsage: TokenUsage | null; currentContextWindow: number; darkMode?: boolean }
+    export const TokenProgress: React.FC<TokenProgressProps>
+
+    export const ErrorBoundary: React.FC<{ onReset?: () => void; darkMode?: boolean; children?: ReactNode }>
+
     // ---- Modal ----
     export interface AgentModalProps { open: boolean; onClose: () => void; title?: string; titleIcon?: ReactNode; width?: number; height?: number; darkMode?: boolean; children: ReactNode; footer?: ReactNode }
     export const AgentModal: React.FC<AgentModalProps>
