@@ -1,10 +1,10 @@
 import { Button, Popconfirm, Space, Typography, message, theme } from 'antd'
 import { DeleteOutlined } from '@ant-design/icons'
 import { useAgentLocale } from './locale/index'
+import type { SessionInfo } from './types'
 const { Text } = Typography
 
-interface Session { session_id: string; title: string; preview?: string; msg_count?: number; last_time?: string; token_usage?: any }
-interface Props { sessions: Session[]; darkMode?: boolean; onOpen: (sid: string, sessionInfo?: any) => void; onRefresh: () => void; currentSessionID: string; onNewSession: () => void; onDeleteSession?: (sessionID: string) => Promise<{ success: boolean; error?: string }> }
+interface Props { sessions: SessionInfo[]; darkMode?: boolean; onOpen: (sid: string, sessionInfo?: any) => void; onRefresh: () => void; currentSessionID: string; onNewSession: () => void; onDeleteSession?: (sessionID: string) => Promise<{ success: boolean; error?: string }> }
 
 export default function SessionHistory({ sessions, darkMode, onOpen, onRefresh, currentSessionID, onNewSession, onDeleteSession }: Props) {
     const { token } = theme.useToken()

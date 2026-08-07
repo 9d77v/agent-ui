@@ -53,6 +53,8 @@ export const enLocale: AgentUILocale = {
         modeDefault: 'Default Approval',
         modeManual: 'Manual Approval',
         allowButton: 'Allow',
+        pendingCount: '{n} commands awaiting approval',
+        approveAllButton: 'Approve All',
         commandTitle: 'Allow command?',
         fileTitle: 'Allow file edits?',
         toolTitle: 'Approval Required',

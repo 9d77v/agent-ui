@@ -1,6 +1,7 @@
 import { Input, Button, Select, Tooltip, Dropdown, Typography, Space, theme } from 'antd'
 import { CheckOutlined, SettingOutlined, FileAddOutlined, PictureOutlined, CloseOutlined, ToolOutlined, PauseCircleOutlined, EnterOutlined } from '@ant-design/icons'
 import { useAgentLocale } from './locale/index'
+import type { ModelOption, SelectedFile, SelectedImage } from './types'
 
 const { Text } = Typography
 const { TextArea } = Input
@@ -9,11 +10,11 @@ export interface ChatInputProps {
     inputText: string; onInputChange: (v: string) => void; onSend: () => void
     sending: boolean; onCancel: () => void; onKeyDown: (e: React.KeyboardEvent) => void
     darkMode?: boolean; onFilePickerOpen?: () => void; includeProjectDocs?: boolean; onToggleDocs?: () => void
-    modelOptions?: { label: string; value: string; providerId: string }[]
+    modelOptions?: ModelOption[]
     currentModel?: string; onModelChange?: (v: string) => void; onManageModels?: () => void
     thinking?: string; onThinkingChange?: (v: string) => void; onToolConfigOpen?: () => void
-    selectedFiles?: { path: string; startLine?: number; endLine?: number }[]
-    selectedImages?: { url: string; name: string }[]
+    selectedFiles?: SelectedFile[]
+    selectedImages?: SelectedImage[]
     onAddImageOpen?: () => void
     onRemoveImage?: (index: number) => void
 }

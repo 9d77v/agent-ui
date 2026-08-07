@@ -10,7 +10,8 @@ interface WsInput {
     thinking: string
     approvalMode: string
     includeProjectDocs: boolean
-    selectedFiles: { path: string; startLine?: number; endLine?: number }[]
+    // 预留字段（hook 内未使用；宿主可传可不传）
+    selectedFiles?: { path: string; startLine?: number; endLine?: number }[]
     workspaceRoot?: string
     getWebSocketURL: () => Promise<string>
 }
@@ -32,6 +33,8 @@ interface WsOutput {
     handleCancel: () => void
     handleRetry: (retryInfo: any) => void
     handleContinue: () => void
+    /** 运行中切换审批模式：通知后端即时生效（当前编排后续工具判定立即读取） */
+    updateApprovalMode: (mode: string) => void
 }
 
 export function useAgentWebSocket(input: WsInput): WsOutput {
@@ -307,5 +310,10 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
         sendWsMessage({ type: 'retry', session_id: retryInfo.sessionId, message_id: retryInfo.messageId, message: retryInfo.message, model: retryInfo.model, provider_id: retryInfo.providerId, mode: retryInfo.mode, thinking: retryInfo.thinking, approval_mode: approvalMode })
     }, [approvalMode, sendWsMessage])
 
-    return { sendText, sending, wsRef, streamingMsgIdRef, streamingMsgId, pendingApprovals, questionnaireData, setQuestionnaireData, setPendingApprovals, handleApproveTool, handleRejectTool, handleRevertFile, handleOpenFile, handleCancel, handleRetry, handleContinue }
+    // 运行中切换审批模式：发 WS 通知后端更新会话动态模式（当前编排后续工具调用立即生效，无需等下一轮）
+    const updateApprovalMode = useCallback((mode: string) => {
+        sendWsMessage({ type: 'update_approval_mode', session_id: sessionID, approval_mode: mode })
+    }, [sendWsMessage, sessionID])
+
+    return { sendText, sending, wsRef, streamingMsgIdRef, streamingMsgId, pendingApprovals, questionnaireData, setQuestionnaireData, setPendingApprovals, handleApproveTool, handleRejectTool, handleRevertFile, handleOpenFile, handleCancel, handleRetry, handleContinue, updateApprovalMode }
 }

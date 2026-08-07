@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react'
 import { Button, Tooltip, message, theme } from 'antd'
-import { RobotOutlined, CloseOutlined, PlusOutlined, HistoryOutlined } from '@ant-design/icons'
+import { RobotOutlined, CloseOutlined, PlusOutlined, HistoryOutlined, CheckOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons'
 import { useMessageTree, type AgentMessage } from './hooks/useMessageTree'
 import { useAgentWebSocket } from './hooks/useAgentWebSocket'
 import MessageList from './MessageList'
@@ -13,15 +13,9 @@ import ErrorBoundary from './ErrorBoundary'
 import { AgentUIContext, defaultLocale, type AgentUILocale } from './locale/index'
 import { ToolConfigModal, FilePickerModal } from './modal'
 import type { ToolTreeNode } from './modal'
+import type { SessionInfo, ModelOption, SelectedFile, SelectedImage, ApprovalItem } from './types'
 
-export interface SessionInfo {
-    session_id: string
-    title: string
-    preview?: string
-    msg_count?: number
-    last_time?: string
-    token_usage?: any
-}
+export type { SessionInfo } from './types'
 
 export interface PanelProps {
     getWebSocketURL: () => Promise<string>
@@ -81,7 +75,7 @@ export interface PanelProps {
 }
 
 export default function FrameworkAgentPanel(props: PanelProps) {
-    const { collapsed, onToggle, darkMode, toolNameLabels } = props
+    const { collapsed, onToggle, darkMode } = props
     const { token } = theme.useToken()
     const mergedLocale = useMemo<AgentUILocale>(() => ({ ...defaultLocale, ...props.locale }), [props.locale])
     const msgTree = useMessageTree()
@@ -98,12 +92,32 @@ export default function FrameworkAgentPanel(props: PanelProps) {
         thinking: props.thinking || 'off',
         approvalMode,
         includeProjectDocs: props.includeProjectDocs !== undefined ? props.includeProjectDocs : true,
-        selectedFiles: props.selectedFiles || [],
-        workspaceRoot: props.workspaceRoot,
         getWebSocketURL: props.getWebSocketURL,
     })
+    // 切换审批模式：更新 UI 状态 + 通知后端即时生效（当前编排后续工具判定立即读取最新值）
+    const handleApprovalModeChange = useCallback((mode: string) => {
+        setApprovalMode(mode)
+        ws.updateApprovalMode(mode)
+    }, [ws.updateApprovalMode])
     const sending = ws.sending
-    const pendingApproval = ws.pendingApprovals.length > 0 ? ws.pendingApprovals[0] : null
+    // 审批卡片按索引切换查看（同批多项时逐一审阅，不必只看第一项）
+    const [approvalIndex, setApprovalIndex] = useState(0)
+    useEffect(() => {
+        const len = ws.pendingApprovals.length
+        if (len === 0) { setApprovalIndex(0); return }
+        if (approvalIndex >= len) setApprovalIndex(len - 1)
+    }, [ws.pendingApprovals.length, approvalIndex])
+    const pendingApproval = ws.pendingApprovals.length > 0
+        ? ws.pendingApprovals[Math.min(approvalIndex, ws.pendingApprovals.length - 1)]
+        : null
+    // 批量允许：对当前同批全部待审批逐项批准（后端攒批，全部通过后统一恢复编排）
+    const approveAll = useCallback(() => {
+        ws.pendingApprovals.forEach(a => ws.handleApproveTool(a.approvalId))
+    }, [ws.pendingApprovals, ws.handleApproveTool])
+    const prevApproval = useCallback(() => setApprovalIndex(i => Math.max(0, i - 1)), [])
+    const nextApproval = useCallback(() => {
+        setApprovalIndex(i => Math.min(Math.max(0, ws.pendingApprovals.length - 1), i + 1))
+    }, [ws.pendingApprovals.length])
     const [questionnaireData, setQuestionnaireData] = useState<{ id: string; questions: any[] } | null>(null)
     const [toolConfigOpen, setToolConfigOpen] = useState(false)
     const [filePickerOpen, setFilePickerOpen] = useState(false)
@@ -183,9 +197,10 @@ export default function FrameworkAgentPanel(props: PanelProps) {
                         )}
                         <div style={{ flex: 1, overflow: 'hidden' }}>
                             <MessageList messageOrder={msgTree.messageOrder} messageMap={msgTree.messageMap}
-                                darkMode={darkMode} streamingMsgId={ws.streamingMsgId} toolNameLabels={toolNameLabels}
-                                onOpenFile={ws.handleOpenFile} onRevertFile={ws.handleRevertFile} onRetry={ws.handleRetry}
+                                darkMode={darkMode} streamingMsgId={ws.streamingMsgId}
+                                onOpenFile={ws.handleOpenFile} onRetry={ws.handleRetry}
                                 onContinue={ws.handleContinue}
+                                toolAutoExpand={ws.pendingApprovals.length === 0}
                                 onToggleReasoning={(msgId, collapsed) => msgTree.updateMessage(msgId, msg => ({ ...msg, showReasoning: !collapsed }))} />
                         </div>
                     </>
@@ -194,10 +209,24 @@ export default function FrameworkAgentPanel(props: PanelProps) {
                 {!showHistory && (
                     <>
                         {pendingApproval && (
-                            <CommandApproval approvalId={pendingApproval.approvalId} command={pendingApproval.command}
-                                riskLevel={pendingApproval.riskLevel}
-                                onApprove={() => ws.handleApproveTool(pendingApproval.approvalId)}
-                                onReject={() => ws.handleRejectTool(pendingApproval.approvalId)} darkMode={darkMode} />
+                            <div style={{ margin: '8px 12px 0' }}>
+                                {ws.pendingApprovals.length > 1 && (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                                        <Button size="small" icon={<LeftOutlined />} disabled={approvalIndex === 0} onClick={prevApproval} />
+                                        <span style={{ flex: 1, textAlign: 'center', color: token.colorTextSecondary, fontSize: 12 }}>
+                                            {mergedLocale.approval.pendingCount.replace('{n}', String(ws.pendingApprovals.length))} · {approvalIndex + 1}/{ws.pendingApprovals.length}
+                                        </span>
+                                        <Button size="small" icon={<RightOutlined />} disabled={approvalIndex >= ws.pendingApprovals.length - 1} onClick={nextApproval} />
+                                        <Button size="small" type="primary" icon={<CheckOutlined />} onClick={approveAll}>
+                                            {mergedLocale.approval.approveAllButton}
+                                        </Button>
+                                    </div>
+                                )}
+                                <CommandApproval key={pendingApproval.approvalId} approvalId={pendingApproval.approvalId} command={pendingApproval.command}
+                                    riskLevel={pendingApproval.riskLevel}
+                                    onApprove={() => ws.handleApproveTool(pendingApproval.approvalId)}
+                                    onReject={() => ws.handleRejectTool(pendingApproval.approvalId)} darkMode={darkMode} />
+                            </div>
                         )}
                         {props.bottomPanels}
                         <ChatInput inputText={inputText} onInputChange={setInputText} onSend={handleSend}
@@ -213,7 +242,7 @@ export default function FrameworkAgentPanel(props: PanelProps) {
                             selectedImages={props.selectedImages}
                             onAddImageOpen={props.onAddImageOpen}
                             onRemoveImage={props.onRemoveImage} />
-                        <ApprovalStatusBar approvalMode={approvalMode} onModeChange={setApprovalMode}
+                        <ApprovalStatusBar approvalMode={approvalMode} onModeChange={handleApprovalModeChange}
                             tokenUsage={props.tokenUsage || null} currentContextWindow={props.currentContextWindow || 0} darkMode={darkMode} />
                     </>
                 )}

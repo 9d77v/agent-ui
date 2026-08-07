@@ -53,6 +53,8 @@ export const zhLocale: AgentUILocale = {
         modeDefault: '默认审批',
         modeManual: '绕过审批',
         allowButton: '允许',
+        pendingCount: '共 {n} 项命令待审批',
+        approveAllButton: '全部允许',
         commandTitle: '允许执行命令？',
         fileTitle: '允许修改文件？',
         toolTitle: '需要你的批准',

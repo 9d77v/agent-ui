@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Typography, Button, theme } from 'antd'
 import { AgentMessage } from './hooks/useMessageTree'
-import ToolTimeline, { type TimelineToolItem } from './ToolTimeline'
+import ToolTimeline from './ToolTimeline'
+import type { ToolViewItem } from './types'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useAgentLocale } from './locale/index'
@@ -10,17 +11,17 @@ const { Text } = Typography
 
 export interface MessageBubbleProps {
     msg: AgentMessage; darkMode?: boolean; streamingMsgId?: string | null
-    onOpenFile: (path: string) => void; onRevertFile: (path: string, backupPath: string) => void
+    onOpenFile: (path: string) => void
     onRetry: (retryInfo: NonNullable<AgentMessage['retryInfo']>) => void
     onContinue: () => void
     onToggleReasoning: (msgId: string, collapsed: boolean) => void
-    toolNameLabels?: Record<string, string>
+    /** 是否自动展开工具参数（审批进行中传 false） */
+    toolAutoExpand?: boolean
 }
 
-export default function MessageBubble({ msg, darkMode, streamingMsgId, onOpenFile, onRevertFile, onRetry, onContinue, onToggleReasoning, toolNameLabels }: MessageBubbleProps) {
+export default function MessageBubble({ msg, darkMode, streamingMsgId, onOpenFile, onRetry, onContinue, onToggleReasoning, toolAutoExpand }: MessageBubbleProps) {
     const { token } = theme.useToken()
     const loc = useAgentLocale()
-    const toolDisplayNames = loc.toolDisplayNames
     const isStreaming = streamingMsgId === msg.id
     // 真正"仍在输出"：message_end 只置 loading=false，streamingMsgId 直到 turn_complete 才清空；
     // 若仅凭 isStreaming 判断，结束后的消息会卡在"流式强制展开 + 打字机截断"，
@@ -70,7 +71,6 @@ export default function MessageBubble({ msg, darkMode, streamingMsgId, onOpenFil
         </div>
     }
         if (msg.role === 'tool') {
-        const labels = toolNameLabels || toolDisplayNames || {}
         const output = msg.content || ''
         return <div style={{ width: '100%', marginBottom: 8 }}>
             <div style={{ padding: '6px 10px', borderRadius: 6, background: token.colorFillAlter, border: `1px solid ${token.colorBorderSecondary}`, fontSize: 12, color: token.colorTextSecondary }}>
@@ -79,7 +79,7 @@ export default function MessageBubble({ msg, darkMode, streamingMsgId, onOpenFil
         </div>
     }
 
-    const tools: TimelineToolItem[] = (msg.toolList || []).map(t => ({ name: t.name || '', args: t.args || '', result: t.result, status: (t.status || 'done') as TimelineToolItem['status'] }))
+    const tools: ToolViewItem[] = (msg.toolList || []).map(t => ({ name: t.name || '', args: t.args || '', result: t.result, status: (t.status || 'done') as ToolViewItem['status'] }))
     return <div style={{ width: '100%' }}>
         {msg.reasoning && (isOutputting && msg.showReasoning ? (
             // 思考仍在输出：强制展开、不可折叠，内容跟随滚动到底部
@@ -101,7 +101,7 @@ export default function MessageBubble({ msg, darkMode, streamingMsgId, onOpenFil
                 </div>
             </details>
         ))}
-        {tools.length > 0 && <ToolTimeline tools={tools} darkMode={darkMode} onFileClick={onOpenFile} />}
+        {tools.length > 0 && <ToolTimeline tools={tools} darkMode={darkMode} onFileClick={onOpenFile} autoExpand={toolAutoExpand} />}
         {shownContent?.trim() && <div style={{ fontSize: 13, lineHeight: 1.6, color: token.colorText }}><MarkdownRenderer content={shownContent} /></div>}
         {msg.loading && !msg.content?.trim() && !tools.length && !(isOutputting && msg.showReasoning && msg.reasoning) && <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: token.colorTextTertiary, fontSize: 13 }}><span style={{ animation: 'pulse 1.5s infinite' }}>●</span> {loc.message.thinkingLabel}</div>}
         {msg.needsContinue && !msg.loading && (

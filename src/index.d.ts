@@ -1,7 +1,10 @@
 declare module 'agent-ui' {
     import type { ReactNode } from 'react'
     export interface SessionInfo { session_id: string; title: string; preview?: string; msg_count?: number; last_time?: string; token_usage?: any }
-    export interface AgentMessage { id: string; seq?: number; turnId?: string; role: 'user' | 'assistant' | 'tool' | 'model'; content: string; reasoning?: string; loading?: boolean; showReasoning?: boolean; needsContinue?: boolean; toolList?: any[]; fileDiff?: any; retryInfo?: any }
+    export interface ToolCallEntry { callId?: string; name: string; args: string; status: 'executing' | 'done' | 'error'; result?: any }
+    export interface AgentMessageRetryInfo { messageId: string; sessionId: string; message: string; model: string; providerId: string; mode: string; thinking: string; done?: boolean }
+    export interface AgentMessageFileDiff { filePath: string; original?: any; modified?: any }
+    export interface AgentMessage { id: string; seq?: number; turnId?: string; role: 'user' | 'assistant' | 'tool' | 'model'; content: string; reasoning?: string; loading?: boolean; showReasoning?: boolean; needsContinue?: boolean; toolList?: ToolCallEntry[]; retryInfo?: AgentMessageRetryInfo; fileDiff?: AgentMessageFileDiff }
 
     export interface PanelLocale { title: string; history: string; newSession: string }
     export interface ChatInputLocale { placeholder: string; sendTooltip: string; stopTooltip: string; addFileTooltip: string; addImageTooltip: string; docsAttachedTooltip: string; docsNotAttachedTooltip: string; docsLabel: string; noDocsLabel: string; manageModelsLabel: string; modelLabel: string; toolConfigTooltip: string; thinkingOff: string; thinkingDefault: string; thinkingDeep: string }
@@ -37,7 +40,6 @@ declare module 'agent-ui' {
 
     export interface PanelProps {
         getWebSocketURL: () => Promise<string>
-        toolNameLabels?: Record<string, string>
         toolDisplayNames?: Record<string, string>
         locale?: Partial<AgentUILocale>
         formatModelLabel?: (modelValue: string) => string
@@ -47,25 +49,55 @@ declare module 'agent-ui' {
         filePicker?: { onSearch: (query: string) => Promise<string[]>; onSelect: (filePath: string) => void }
         sessionID: string; setSessionID: (id: string) => void
         onNewSession?: () => void; collapsed: boolean; onToggle: () => void; darkMode?: boolean
-        modelOptions?: { label: string; value: string; providerId: string }[]
+        modelOptions?: ModelOption[]
         currentModel?: string; onModelChange?: (v: string) => void; onManageModels?: () => void
         thinking?: string; onThinkingChange?: (v: string) => void; onFilePickerOpen?: () => void
         includeProjectDocs?: boolean; onToggleDocs?: () => void; onToolConfigOpen?: () => void
-        selectedFiles?: { path: string; startLine?: number; endLine?: number }[]
+        selectedFiles?: SelectedFile[]
         readFileContent?: (path: string, startLine?: number, endLine?: number) => Promise<any>
         onClearFiles?: () => void
-        selectedImages?: { url: string; name: string }[]
+        selectedImages?: SelectedImage[]
         onAddImageOpen?: () => void
         onRemoveImage?: (index: number) => void
         onClearImages?: () => void
         sessions?: SessionInfo[]; onLoadSessions?: () => Promise<void>
         onOpenSession?: (sid: string, sessionInfo?: SessionInfo) => Promise<AgentMessage[]>
         onDeleteSession?: (sessionID: string) => Promise<{ success: boolean; error?: string }>
-        tokenUsage?: any; currentContextWindow?: number; activeProviderId?: string; workspaceRoot?: string
+        tokenUsage?: TokenUsage; currentContextWindow?: number; activeProviderId?: string; workspaceRoot?: string
         onToggleReasoning?: (msgId: string, collapsed: boolean) => void
     }
-    export function useMessageTree(): { messageMap: Record<string, AgentMessage>; messageOrder: string[]; addMessage: (msg: AgentMessage) => void; updateMessage: (msgId: string, updater: (msg: AgentMessage) => AgentMessage) => void; clearMessages: () => void }
-    export function useModelLoader(collapsed: boolean, configProvider: any, onOpenSettings?: () => void): any
+    export interface MessageTree {
+        messageMap: Record<string, AgentMessage>
+        messageOrder: string[]
+        addMessage: (msg: AgentMessage) => void
+        updateMessage: (msgId: string, updater: (msg: AgentMessage) => AgentMessage) => void
+        updateToolByCallId: (callId: string, updater: (tool: ToolCallEntry) => ToolCallEntry) => void
+        clearMessages: () => void
+    }
+    export function useMessageTree(): MessageTree
+    export interface ModelOption { label: string; value: string; providerId: string }
+    export interface SelectedFile { path: string; startLine?: number; endLine?: number }
+    export interface SelectedImage { url: string; name: string }
+    export interface ModelState {
+        modelOptions: ModelOption[]
+        currentModel: string
+        thinking: string
+        activeProviderId: string
+        currentContextWindow: number
+        loadModels: () => Promise<{ providerId: string; modelName: string } | null>
+        setCurrentModel: (v: string) => void
+        setThinking: (v: string) => void
+    }
+    export interface ConfigProvider {
+        getLLMProviders: () => any[]
+        getLastSelectedModel: (providerId: string) => string
+        getLastThinkingMode: (providerId: string) => string
+        getActiveProviderId: () => string
+        setLastSelectedModel: (providerId: string, model: string) => void
+        setLastThinkingMode: (mode: string) => void
+        getModelContextWindow: (providerId: string, modelId: string) => number
+    }
+    export function useModelLoader(collapsed: boolean, configProvider: ConfigProvider, onOpenSettings?: () => void): ModelState
     export function FrameworkAgentPanel(props: PanelProps): JSX.Element
     export default FrameworkAgentPanel
 
@@ -74,10 +106,8 @@ declare module 'agent-ui' {
         msg: AgentMessage
         darkMode?: boolean
         streamingMsgId?: string | null
-        toolNameLabels?: Record<string, string>
         onOpenFile: (path: string) => void
-        onRevertFile: (path: string, backupPath: string) => void
-        onRetry: (retryInfo: any) => void
+        onRetry: (retryInfo: AgentMessageRetryInfo) => void
         onContinue: () => void
         onToggleReasoning: (msgId: string, collapsed: boolean) => void
     }
@@ -88,10 +118,8 @@ declare module 'agent-ui' {
         messageMap: Record<string, AgentMessage>
         darkMode?: boolean
         streamingMsgId?: string | null
-        toolNameLabels?: Record<string, string>
         onOpenFile: (path: string) => void
-        onRevertFile: (path: string, backupPath: string) => void
-        onRetry: (retryInfo: any) => void
+        onRetry: (retryInfo: AgentMessageRetryInfo) => void
         onContinue: () => void
         onToggleReasoning: (msgId: string, collapsed: boolean) => void
     }
@@ -139,34 +167,4 @@ declare module 'agent-ui' {
         setLastThinkingMode?: (providerId: string, mode: string) => void
         getModelContextWindows?: (providerId?: string) => Record<string, number>
     }): any
-
-    // ---- LLMConfigPanel ----
-    export interface LLMProviderItem {
-        id: string; name: string; provider_type: string; base_url: string
-        preset_name?: string; workspace_id?: string; is_default?: boolean
-        created_at?: string; selected_models?: string[]
-    }
-    export interface ModelInfoItem { id: string; created?: number; owned_by?: string }
-    export interface LLMConfigPanelAPI {
-        getProviders: () => LLMProviderItem[] | Promise<LLMProviderItem[]>
-        addProvider: (provider: LLMProviderItem) => Promise<void>
-        updateProvider: (provider: LLMProviderItem) => Promise<void>
-        deleteProvider: (id: string) => Promise<void>
-        saveAPIKey: (id: string, key: string) => Promise<void>
-        checkAPIKeyExists?: (id: string) => Promise<boolean>
-        listModels: (baseURL: string, apiKey: string, providerType: string) => Promise<ModelInfoItem[]>
-        cacheModels: (providerId: string, models: ModelInfoItem[]) => Promise<void>
-        getSelectedModels?: (providerId: string) => string[]
-        setSelectedModels?: (providerId: string, modelIds: string[]) => void
-        getContextWindows?: () => Record<string, number>
-        setContextWindow?: (modelId: string, tokens: number) => void
-    }
-    export interface LLMConfigPanelProps {
-        api: LLMConfigPanelAPI
-        autoAddAliyun?: boolean
-        extraColumns?: any[]
-        onBeforeSave?: (provider: LLMProviderItem) => Promise<void>
-    }
-    export const PROVIDER_PRESETS: { label: string; types: { label: string; value: string; url: string }[] }[]
-    export const LLMConfigPanel: React.FC<LLMConfigPanelProps>
 }

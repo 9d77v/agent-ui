@@ -2,10 +2,9 @@ import { useState, useEffect } from 'react'
 import { Typography, theme } from 'antd'
 import { LoadingOutlined, CheckCircleOutlined, CloseCircleOutlined, CodeOutlined, FileTextOutlined, FolderOutlined, SearchOutlined, ConsoleSqlOutlined, EditOutlined, DownOutlined, RightOutlined, SaveOutlined, BranchesOutlined, QuestionCircleOutlined, CheckSquareOutlined, DeploymentUnitOutlined, LinkOutlined, ToolOutlined } from '@ant-design/icons'
 import { useAgentLocale } from './locale/index'
+import type { ToolViewItem } from './types'
 
 const { Text } = Typography
-
-export interface ToolCallItem { name: string; args: string; status: 'executing' | 'done' | 'error'; result?: any; output?: string }
 
 function toolMeta(name: string, displayNames?: Record<string, string>) {
     const label = displayNames?.[name] || name
@@ -27,7 +26,7 @@ function toolMeta(name: string, displayNames?: Record<string, string>) {
     }
 }
 
-export default function ToolCallCard({ tool, darkMode, defaultExpanded }: { tool: ToolCallItem; darkMode?: boolean; defaultExpanded?: boolean }) {
+export default function ToolCallCard({ tool, darkMode, defaultExpanded }: { tool: ToolViewItem; darkMode?: boolean; defaultExpanded?: boolean }) {
     const { token } = theme.useToken()
     const loc = useAgentLocale()
     const displayNames = loc.toolDisplayNames

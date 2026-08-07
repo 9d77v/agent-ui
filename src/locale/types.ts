@@ -59,6 +59,10 @@ export interface ApprovalLocale {
     modeManual: string
     /** VSCode 风格批准卡片文案 */
     allowButton: string
+    /** 待审批计数（{n} 为数量占位） */
+    pendingCount: string
+    /** 批量全部允许按钮 */
+    approveAllButton: string
     commandTitle: string
     fileTitle: string
     toolTitle: string
