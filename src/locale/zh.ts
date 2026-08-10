@@ -23,6 +23,7 @@ export const zhLocale: AgentUILocale = {
         thinkingOff: '停用',
         thinkingDefault: '标准',
         thinkingDeep: '深度',
+        attachedFilesLabel: '附加文件',
     },
     message: {
         reasoningTitle: '思考内容',

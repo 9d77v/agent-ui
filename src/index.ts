@@ -12,7 +12,7 @@ export { useAgentWebSocket } from './hooks/useAgentWebSocket'
 export { useModelLoader } from './hooks/useModelLoader'
 export type { ModelOption, ModelState, ConfigProvider } from './hooks/useModelLoader'
 
-export { default as FrameworkAgentPanel } from './AgentPanel'
+export { default as FrameworkAgentPanel, mergeRosterAgents } from './AgentPanel'
 export type { SessionInfo, PanelProps } from './AgentPanel'
 
 export { AgentModal, ToolConfigModal, FilePickerModal } from './modal'
@@ -25,9 +25,13 @@ export type { ChatInputProps } from './ChatInput'
 
 export { default as ToolCallCard } from './ToolCallCard'
 
+export { default as AgentRoster } from './AgentRoster'
+
+export { default as AgentTranscript } from './AgentTranscript'
+
 export { default as ToolTimeline } from './ToolTimeline'
 
-export type { ToolViewItem } from './types'
+export type { ToolViewItem, AgentStatus, AgentHandoff } from './types'
 
 export { debounce, createModelConfigProvider } from './utils'
 

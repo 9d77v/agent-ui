@@ -5,9 +5,11 @@ declare module 'agent-ui' {
     export interface AgentMessageRetryInfo { messageId: string; sessionId: string; message: string; model: string; providerId: string; mode: string; thinking: string; done?: boolean }
     export interface AgentMessageFileDiff { filePath: string; original?: any; modified?: any }
     export interface AgentMessage { id: string; seq?: number; turnId?: string; role: 'user' | 'assistant' | 'tool' | 'model'; content: string; reasoning?: string; loading?: boolean; showReasoning?: boolean; needsContinue?: boolean; toolList?: ToolCallEntry[]; retryInfo?: AgentMessageRetryInfo; fileDiff?: AgentMessageFileDiff }
+    export interface AgentHandoff { label?: string; agent?: string; prompt?: string; send?: boolean; show_continue_on?: boolean }
+    export interface AgentStatus { agent_id: string; name: string; status: string; session_id: string; parent_id?: string; depth: number; task?: string; summary?: string; files_changed?: string[]; handoffs?: AgentHandoff[]; error?: string; transient?: boolean; created_at?: string; updated_at?: string }
 
     export interface PanelLocale { title: string; history: string; newSession: string }
-    export interface ChatInputLocale { placeholder: string; sendTooltip: string; stopTooltip: string; addFileTooltip: string; addImageTooltip: string; docsAttachedTooltip: string; docsNotAttachedTooltip: string; docsLabel: string; noDocsLabel: string; manageModelsLabel: string; modelLabel: string; toolConfigTooltip: string; thinkingOff: string; thinkingDefault: string; thinkingDeep: string }
+    export interface ChatInputLocale { placeholder: string; sendTooltip: string; stopTooltip: string; addFileTooltip: string; addImageTooltip: string; docsAttachedTooltip: string; docsNotAttachedTooltip: string; docsLabel: string; noDocsLabel: string; manageModelsLabel: string; modelLabel: string; toolConfigTooltip: string; thinkingOff: string; thinkingDefault: string; thinkingDeep: string; attachedFilesLabel: string }
     export interface MessageLocale { reasoningTitle: string; thinkingLabel: string; retryButton: string; continueButton: string; maxIterationsNote: string; truncatedSuffix: string; fileChangeLabel: string; revertButton: string }
     export interface ToolLocale { paramLabel: string; outputLabel: string; errorLabel: string; executingStatus: string; completedStatus: string; stepsLabel: string }
     export interface ApprovalLocale { riskLevelDangerous: string; riskLevelModerate: string; riskLevelSafe: string; requiredTitle: string; skipButton: string; confirmButton: string; modeAuto: string; modeDefault: string; modeManual: string; allowButton: string; commandTitle: string; fileTitle: string; toolTitle: string; commandDesc: string; fileDesc: string; toolDesc: string; hiddenLines: string; collapse: string }
@@ -53,13 +55,22 @@ declare module 'agent-ui' {
         currentModel?: string; onModelChange?: (v: string) => void; onManageModels?: () => void
         thinking?: string; onThinkingChange?: (v: string) => void; onFilePickerOpen?: () => void
         includeProjectDocs?: boolean; onToggleDocs?: () => void; onToolConfigOpen?: () => void
+        /** 会话初始审批模式（宿主从后端 GetApprovalMode 读取；重启后绕过审批等持久化设置不丢失） */
+        initialApprovalMode?: string
+        /** 子代理交接回调（plan 完成后的「开始实现」等）。缺省：切到 agent 模式并发送 prompt 给主 agent */
+        onHandoff?: (label: string, prompt: string) => void
+        /** 会话详情关联的子代理列表（打开会话时由宿主 GetSessionAgents 提供；优先于全局 agent_status 推送） */
+        sessionAgents?: AgentStatus[]
+        /** 点击 roster 行回调（宿主查看子代理消息流等） */
+        onSelectAgent?: (agent: AgentStatus) => void
         selectedFiles?: SelectedFile[]
-        readFileContent?: (path: string, startLine?: number, endLine?: number) => Promise<any>
         onClearFiles?: () => void
         selectedImages?: SelectedImage[]
         onAddImageOpen?: () => void
         onRemoveImage?: (index: number) => void
+        onRemoveFile?: (index: number) => void
         onClearImages?: () => void
+        onPasteImage?: (file: File) => void
         sessions?: SessionInfo[]; onLoadSessions?: () => Promise<void>
         onOpenSession?: (sid: string, sessionInfo?: SessionInfo) => Promise<AgentMessage[]>
         onDeleteSession?: (sessionID: string) => Promise<{ success: boolean; error?: string }>
@@ -100,6 +111,8 @@ declare module 'agent-ui' {
     export function useModelLoader(collapsed: boolean, configProvider: ConfigProvider, onOpenSettings?: () => void): ModelState
     export function FrameworkAgentPanel(props: PanelProps): JSX.Element
     export default FrameworkAgentPanel
+    /** last-known roster 合并纯函数（广播 upsert 不移除、快照补历史、按 parent_id 过滤） */
+    export function mergeRosterAgents(lastKnown: Map<string, AgentStatus>, wsAgents: AgentStatus[] | undefined, sessionAgents: AgentStatus[] | undefined, sessionID: string): AgentStatus[]
 
     // ---- Message 组件 ----
     export interface MessageBubbleProps {
@@ -112,6 +125,20 @@ declare module 'agent-ui' {
         onToggleReasoning: (msgId: string, collapsed: boolean) => void
     }
     export const MessageBubble: React.FC<MessageBubbleProps>
+
+    // ---- 多 Agent 编排（只读展示，子代理自动化执行） ----
+    export interface AgentRosterProps { agents: AgentStatus[]; darkMode?: boolean; onSelect?: (agent: AgentStatus) => void }
+    export const AgentRoster: React.FC<AgentRosterProps>
+
+    // ---- 子代理独立消息流（只读展示；onSend 可选） ----
+    export interface AgentTranscriptProps {
+        agent: AgentStatus
+        messages: AgentMessage[]
+        onSend?: (message: string) => void
+        onClose?: () => void
+        darkMode?: boolean
+    }
+    export const AgentTranscript: React.FC<AgentTranscriptProps>
 
     export interface MessageListProps {
         messageOrder: string[]

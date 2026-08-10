@@ -22,6 +22,8 @@ export interface ChatInputLocale {
     thinkingOff: string
     thinkingDefault: string
     thinkingDeep: string
+    /** 附加文件引用的标签（发送消息时附在路径列表前的标题） */
+    attachedFilesLabel: string
 }
 
 /** 消息气泡 */

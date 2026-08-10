@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Input, Button, Select, Tooltip, Dropdown, Typography, Space, theme } from 'antd'
 import { CheckOutlined, SettingOutlined, FileAddOutlined, PictureOutlined, CloseOutlined, ToolOutlined, PauseCircleOutlined, EnterOutlined } from '@ant-design/icons'
 import { useAgentLocale } from './locale/index'
@@ -7,8 +8,11 @@ const { Text } = Typography
 const { TextArea } = Input
 
 export interface ChatInputProps {
-    inputText: string; onInputChange: (v: string) => void; onSend: () => void
-    sending: boolean; onCancel: () => void; onKeyDown: (e: React.KeyboardEvent) => void
+    /** 受控模式可选：外部传入时同步；不传则组件内部管理文本（推荐，打字只重渲染 ChatInput，避免父组件整树重渲染卡顿） */
+    inputText?: string
+    onInputChange?: (v: string) => void
+    onSend: (text?: string) => void
+    sending: boolean; onCancel: () => void; onKeyDown?: (e: React.KeyboardEvent) => void
     darkMode?: boolean; onFilePickerOpen?: () => void; includeProjectDocs?: boolean; onToggleDocs?: () => void
     modelOptions?: ModelOption[]
     currentModel?: string; onModelChange?: (v: string) => void; onManageModels?: () => void
@@ -17,12 +21,29 @@ export interface ChatInputProps {
     selectedImages?: SelectedImage[]
     onAddImageOpen?: () => void
     onRemoveImage?: (index: number) => void
+    onRemoveFile?: (index: number) => void
+    onPasteImage?: (file: File) => void
 }
 
 export default function ChatInput(p: ChatInputProps) {
     const { inputText, onInputChange, onSend, sending, onCancel, onKeyDown } = p
     const { token } = theme.useToken()
     const loc = useAgentLocale()
+    // 非受控模式：文本由组件内部管理（打字只重渲染 ChatInput，避免父组件整树重渲染卡顿）；
+    // 兼容受控模式：外部传入 inputText 时同步。
+    const [text, setText] = useState(inputText || '')
+    useEffect(() => {
+        if (inputText !== undefined) setText(inputText)
+    }, [inputText])
+    const handleChange = (v: string) => {
+        setText(v)
+        onInputChange?.(v)
+    }
+    const send = () => {
+        if (sending) return
+        onSend(text)
+        setText('')
+    }
     const thinkingItems = [
         { key: 'off', label: loc.chatInput.thinkingOff },
         { key: 'default', label: loc.chatInput.thinkingDefault },
@@ -36,6 +57,7 @@ export default function ChatInput(p: ChatInputProps) {
                     {p.selectedFiles.map((f, i) => (
                         <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 2, padding: '1px 6px', borderRadius: 4, fontSize: 11, background: token.colorFillAlter, color: token.colorPrimary, maxWidth: 160 }}>
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.path.split('/').pop() || f.path}</span>
+                            <CloseOutlined style={{ cursor: 'pointer', fontSize: 10, color: token.colorTextTertiary }} onClick={() => p.onRemoveFile?.(i)} />
                         </span>
                     ))}
                 </div>
@@ -52,12 +74,36 @@ export default function ChatInput(p: ChatInputProps) {
                 </div>
             )}
             <div style={{ display: 'flex', alignItems: 'center', padding: '4px 8px' }}>
-                <TextArea value={inputText} onChange={e => onInputChange(e.target.value)} onKeyDown={onKeyDown}
+                <TextArea value={text} onChange={e => handleChange(e.target.value)}
+                    onKeyDown={(e) => {
+                        // 非受控模式下在组件内处理 Enter 发送（父组件不再持有 inputText）
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault()
+                            send()
+                            return
+                        }
+                        onKeyDown?.(e)
+                    }}
+                    onPaste={(e) => {
+                        // Ctrl+V 粘贴图片：剪贴板含图片文件时拦截，交给宿主上传（不走文本粘贴）
+                        const items = e.clipboardData?.items
+                        if (!items) return
+                        for (const it of items) {
+                            if (it.kind === 'file' && it.type.startsWith('image/')) {
+                                const file = it.getAsFile()
+                                if (file) {
+                                    e.preventDefault()
+                                    p.onPasteImage?.(file)
+                                }
+                                break
+                            }
+                        }
+                    }}
                     placeholder={loc.chatInput.placeholder} autoSize={{ minRows: 2, maxRows: 6 }} disabled={sending}
                     variant="borderless" style={{ flex: 1, background: 'transparent', padding: '8px 0 8px 10px', resize: 'none', fontSize: 13 }} />
                 <div style={{ padding: '4px 6px 4px 0', flexShrink: 0 }}>
                     {sending ? <Tooltip title={loc.chatInput.stopTooltip}><Button shape="circle" size="small" danger icon={<PauseCircleOutlined style={{ fontSize: 16 }} />} onClick={onCancel} /></Tooltip>
-                        : <Tooltip title={loc.chatInput.sendTooltip}><Button type="primary" shape="circle" size="small" icon={<EnterOutlined style={{ fontSize: 16 }} />} onClick={onSend} disabled={!inputText.trim() && !(p.selectedImages && p.selectedImages.length > 0) && !(p.selectedFiles && p.selectedFiles.length > 0)} /></Tooltip>}
+                        : <Tooltip title={loc.chatInput.sendTooltip}><Button type="primary" shape="circle" size="small" icon={<EnterOutlined style={{ fontSize: 16 }} />} onClick={send} disabled={!text.trim() && !(p.selectedImages && p.selectedImages.length > 0) && !(p.selectedFiles && p.selectedFiles.length > 0)} /></Tooltip>}
                 </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', borderTop: `1px solid ${token.colorBorderSecondary}`, gap: 2 }}>

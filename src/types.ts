@@ -9,6 +9,33 @@ export interface ToolViewItem {
     output?: string
 }
 
+/** 常驻子代理交接项（.agent.md handoffs）。 */
+export interface AgentHandoff {
+    label?: string
+    agent?: string
+    prompt?: string
+    send?: boolean
+    show_continue_on?: boolean
+}
+
+/** 常驻子代理状态（agent 编排树，来自 agent_status / GetAgentRoster）。 */
+export interface AgentStatus {
+    agent_id: string
+    name: string
+    status: string
+    session_id: string
+    parent_id?: string
+    depth: number
+    task?: string
+    summary?: string
+    files_changed?: string[]
+    handoffs?: AgentHandoff[]
+    error?: string
+    transient?: boolean
+    created_at?: string
+    updated_at?: string
+}
+
 /** 模型下拉选项 */
 export interface ModelOption {
     label: string

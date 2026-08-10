@@ -17,9 +17,11 @@ export interface MessageBubbleProps {
     onToggleReasoning: (msgId: string, collapsed: boolean) => void
     /** 是否自动展开工具参数（审批进行中传 false） */
     toolAutoExpand?: boolean
+    /** 子代理交接回调（run_subagent 结果的 handoffs 按钮） */
+    onHandoff?: (label: string, prompt: string) => void
 }
 
-export default function MessageBubble({ msg, darkMode, streamingMsgId, onOpenFile, onRetry, onContinue, onToggleReasoning, toolAutoExpand }: MessageBubbleProps) {
+export default function MessageBubble({ msg, darkMode, streamingMsgId, onOpenFile, onRetry, onContinue, onToggleReasoning, toolAutoExpand, onHandoff }: MessageBubbleProps) {
     const { token } = theme.useToken()
     const loc = useAgentLocale()
     const isStreaming = streamingMsgId === msg.id
@@ -101,7 +103,7 @@ export default function MessageBubble({ msg, darkMode, streamingMsgId, onOpenFil
                 </div>
             </details>
         ))}
-        {tools.length > 0 && <ToolTimeline tools={tools} darkMode={darkMode} onFileClick={onOpenFile} autoExpand={toolAutoExpand} />}
+        {tools.length > 0 && <ToolTimeline tools={tools} darkMode={darkMode} onFileClick={onOpenFile} autoExpand={toolAutoExpand} onHandoff={onHandoff} />}
         {shownContent?.trim() && <div style={{ fontSize: 13, lineHeight: 1.6, color: token.colorText }}><MarkdownRenderer content={shownContent} /></div>}
         {msg.loading && !msg.content?.trim() && !tools.length && !(isOutputting && msg.showReasoning && msg.reasoning) && <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: token.colorTextTertiary, fontSize: 13 }}><span style={{ animation: 'pulse 1.5s infinite' }}>●</span> {loc.message.thinkingLabel}</div>}
         {msg.needsContinue && !msg.loading && (

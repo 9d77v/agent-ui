@@ -1,1 +1,7 @@
 node_modules
+.hhycode/
+.env*
+*.pem
+*.key
+dist/
+*.log

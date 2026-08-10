@@ -13,13 +13,15 @@ interface Props {
     onToggleReasoning: (msgId: string, collapsed: boolean) => void
     /** 是否自动展开工具参数（审批进行中传 false：命令详情由审批卡片展示，避免与工具卡片重复） */
     toolAutoExpand?: boolean
+    /** 子代理交接回调（run_subagent 结果的 handoffs 按钮） */
+    onHandoff?: (label: string, prompt: string) => void
 }
 
 // 距底小于该值视为"已在底部"（自动跟随）；超过则视为用户上翻并暂停跟随、显示回底按钮
 const BOTTOM_THRESHOLD = 40
 
 export default function MessageList(props: Props) {
-    const { messageOrder, messageMap, darkMode, streamingMsgId, onOpenFile, onRetry, onContinue, onToggleReasoning, toolAutoExpand } = props
+    const { messageOrder, messageMap, darkMode, streamingMsgId, onOpenFile, onRetry, onContinue, onToggleReasoning, toolAutoExpand, onHandoff } = props
     const containerRef = useRef<HTMLDivElement>(null)
     const endRef = useRef<HTMLDivElement>(null)
     const userScrolledUp = useRef(false)
@@ -107,7 +109,7 @@ export default function MessageList(props: Props) {
                     const msg = messageMap[id]
                     if (!msg) return null
                     return <div key={msg.id} style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
-                        <MessageBubble msg={msg} darkMode={darkMode} streamingMsgId={streamingMsgId} onOpenFile={onOpenFile} onRetry={onRetry} onContinue={onContinue} onToggleReasoning={onToggleReasoning} toolAutoExpand={toolAutoExpand} />
+                        <MessageBubble msg={msg} darkMode={darkMode} streamingMsgId={streamingMsgId} onOpenFile={onOpenFile} onRetry={onRetry} onContinue={onContinue} onToggleReasoning={onToggleReasoning} toolAutoExpand={toolAutoExpand} onHandoff={onHandoff} />
                     </div>
                 })}
                 <div ref={endRef} />

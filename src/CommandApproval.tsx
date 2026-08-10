@@ -7,6 +7,8 @@ interface Props {
     approvalId: string
     command: string
     riskLevel: string
+    /** 来源子代理名（空 = 主会话） */
+    agent?: string
     onApprove: (approvalId: string) => void
     onReject: (approvalId: string) => void
     onTrust?: () => void
@@ -77,7 +79,7 @@ function riskMeta(r: string, labels: { dangerous: string; moderate: string; safe
 /** 代码预览区默认展开的行数，超出部分折叠为「… N 个隐藏的行」 */
 const MAX_VISIBLE_LINES = 6
 
-export default function CommandApproval({ approvalId, command, riskLevel, onApprove, onReject, onTrust: _onTrust, darkMode }: Props) {
+export default function CommandApproval({ approvalId, command, riskLevel, agent, onApprove, onReject, onTrust: _onTrust, darkMode }: Props) {
     const { token } = theme.useToken()
     const loc = useAgentLocale()
     const [resolved, setResolved] = useState(false)
@@ -120,6 +122,7 @@ export default function CommandApproval({ approvalId, command, riskLevel, onAppr
                 {riskLevel === 'dangerous'
                     ? <ExclamationCircleOutlined style={{ color: risk.color, fontSize: 15 }} />
                     : <SafetyOutlined style={{ color: risk.color, fontSize: 15 }} />}
+                {agent && <span style={{ fontSize: 11, color: token.colorPrimary, background: token.colorPrimaryBg, borderRadius: 4, padding: '1px 6px', lineHeight: '18px', flexShrink: 0 }}>[{agent}]</span>}
                 <span style={{ fontSize: 13.5, fontWeight: 600, color: token.colorText }}>{title}</span>
                 <div style={{ flex: 1 }} />
                 <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: 11, fontWeight: 500, color: risk.color, background: risk.softBg, borderRadius: 10, padding: '1px 8px', lineHeight: '18px' }}>{risk.label}</span>

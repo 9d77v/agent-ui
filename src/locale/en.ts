@@ -23,6 +23,7 @@ export const enLocale: AgentUILocale = {
         thinkingOff: 'Off',
         thinkingDefault: 'Default',
         thinkingDeep: 'Deep',
+        attachedFilesLabel: 'Attached files',
     },
     message: {
         reasoningTitle: 'Reasoning',

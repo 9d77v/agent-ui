@@ -7,7 +7,7 @@ import type { ToolViewItem } from './types'
 
 const { Text } = Typography
 
-export default function ToolTimeline({ tools, darkMode, onFileClick: _onFileClick, autoExpand = true }: { tools: ToolViewItem[]; darkMode?: boolean; onFileClick?: (path: string) => void; autoExpand?: boolean }) {
+export default function ToolTimeline({ tools, darkMode, onFileClick: _onFileClick, autoExpand = true, onHandoff }: { tools: ToolViewItem[]; darkMode?: boolean; onFileClick?: (path: string) => void; autoExpand?: boolean; onHandoff?: (label: string, prompt: string) => void }) {
     const { token } = theme.useToken()
     const loc = useAgentLocale()
     const isExecuting = tools.some(t => t.status === 'executing')
@@ -26,11 +26,11 @@ export default function ToolTimeline({ tools, darkMode, onFileClick: _onFileClic
             </div>
             {isExecuting && <Tag color="processing" style={{ fontSize: 10, lineHeight: '14px', padding: '0 4px' }}>{doneCount}/{totalCount}</Tag>}
         </div>
-        {expanded && <div style={{ padding: '4px 10px 8px' }}>{tools.map((tool, idx) => <StepRow key={tool.name + idx} tool={tool} index={idx + 1} darkMode={darkMode} autoExpand={autoExpand} />)}</div>}
+        {expanded && <div style={{ padding: '4px 10px 8px' }}>{tools.map((tool, idx) => <StepRow key={tool.name + idx} tool={tool} index={idx + 1} darkMode={darkMode} autoExpand={autoExpand} onHandoff={onHandoff} />)}</div>}
     </div>
 }
 
-function StepRow({ tool, index, darkMode, autoExpand = true }: { tool: ToolViewItem; index: number; darkMode?: boolean; autoExpand?: boolean }) {
+function StepRow({ tool, index, darkMode, autoExpand = true, onHandoff }: { tool: ToolViewItem; index: number; darkMode?: boolean; autoExpand?: boolean; onHandoff?: (label: string, prompt: string) => void }) {
     const [expanded, setExpanded] = useState(autoExpand && tool.status === 'executing')
     const { token } = theme.useToken()
     const loc = useAgentLocale()
@@ -46,7 +46,7 @@ function StepRow({ tool, index, darkMode, autoExpand = true }: { tool: ToolViewI
                     <div style={{ flex: 1 }} />
                     {expanded ? <DownOutlined style={{ fontSize: 9, color: token.colorTextTertiary }} /> : <RightOutlined style={{ fontSize: 9, color: token.colorTextTertiary }} />}
                 </div>
-                {expanded && <div style={{ marginTop: 4 }}><ToolCallCard tool={{ name: tool.name, args: tool.args, status: tool.status }} darkMode={darkMode} /></div>}
+                {expanded && <div style={{ marginTop: 4 }}><ToolCallCard tool={tool} darkMode={darkMode} onHandoff={onHandoff} /></div>}
             </div>
         </div>
     </div>
