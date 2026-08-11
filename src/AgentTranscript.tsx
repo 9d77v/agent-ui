@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Typography, Input, Button, Tag, theme } from 'antd'
 import { SendOutlined, CloseOutlined, RobotOutlined } from '@ant-design/icons'
 import MessageBubble from './MessageBubble'
@@ -19,6 +19,13 @@ export default function AgentTranscript({ agent, messages, onSend, onClose, dark
 }) {
     const { token } = theme.useToken()
     const [input, setInput] = useState('')
+    // 消息容器 ref：新消息（含弹窗轮询刷新/流式增量）到达时自动滚动到底（仿 MessageList 滚动跟随）。
+    // 弹窗为只读视图，不做用户上翻检测——简单先滚到底即可（D3 决策）。
+    const containerRef = useRef<HTMLDivElement>(null)
+    useEffect(() => {
+        const el = containerRef.current
+        if (el) el.scrollTop = el.scrollHeight
+    }, [messages])
     const send = () => {
         const t = input.trim()
         if (!t) return
@@ -38,7 +45,7 @@ export default function AgentTranscript({ agent, messages, onSend, onClose, dark
                 <div style={{ flex: 1 }} />
                 {onClose && <Button size="small" type="text" icon={<CloseOutlined />} onClick={onClose} />}
             </div>
-            <div style={{ flex: 1, overflow: 'auto', padding: 8 }}>
+            <div ref={containerRef} style={{ flex: 1, overflow: 'auto', padding: 8 }}>
                 {messages.length === 0 && <Text type="secondary" style={{ fontSize: 11 }}>暂无消息（子代理运行中或已清理）</Text>}
                 {messages.map(m => (
                     <MessageBubble key={m.id} msg={m} darkMode={darkMode}

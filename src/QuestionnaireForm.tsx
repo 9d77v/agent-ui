@@ -28,15 +28,16 @@ export default function QuestionnaireForm({ steps, initialAnswers, onSaveProgres
     const [showReview, setShowReview] = useState(false)
     const [currentIdx, setCurrentIdx] = useState(() => { if (initialAnswers) { for (let i = 0; i < normSteps.length; i++) if (!initialAnswers[normSteps[i].id]) return i; return normSteps.length } return 0 })
     const [answers, setAnswers] = useState<Record<string, string>>(initialAnswers || {})
-    const [customText, setCustomText] = useState('')
+    // 每个问题的自定义输入框内容（per-step 隔离：问题间独立，切换问题不串扰）
+    const [customTexts, setCustomTexts] = useState<Record<string, string>>({})
     const [preSelected] = useState<Record<string, string>>(() => { const init: Record<string, string> = {}; for (const s of normSteps) { if (initialAnswers?.[s.id]) init[s.id] = initialAnswers[s.id]; else if (s.default) init[s.id] = s.default } return init })
     useEffect(() => { if (currentIdx >= total) setShowReview(true) }, [])
     const saveProgress = (a: Record<string, string>) => onSaveProgress?.(a)
     const step = currentIdx < total ? normSteps[currentIdx] : null
     const currentDefault = step ? (preSelected[step.id] || '') : ''
     useEffect(() => { if (!step || answers[step.id] || !currentDefault) return; const na = { ...answers, [step.id]: currentDefault }; setAnswers(na); saveProgress(na) }, [currentIdx])
-    const isMulti = (s: QuestionStep): boolean => { if (s.multi) return true; if (/多选|\((.*?可.*?多.*?)\)|（.*?可.*?多.*?）/i.test(s.question)) return true; return false }
-    const selectOption = (value: string) => { if (!step) return; const cur = answers[step.id] || ''; let nv: string; if (isMulti(step)) { const sel = cur ? cur.split('、').filter(Boolean) : []; const idx = sel.indexOf(value); idx >= 0 ? sel.splice(idx, 1) : sel.push(value); nv = sel.join('、') } else { nv = cur === value ? '' : value }; setCustomText(''); const na = { ...answers, [step.id]: nv }; if (!nv) delete na[step.id]; setAnswers(na); saveProgress(na) }
+    const isMulti = (s: QuestionStep): boolean => { if (typeof s.multi === 'boolean') return s.multi; if (/多选|\((.*?可.*?多.*?)\)|（.*?可.*?多.*?）/i.test(s.question)) return true; return false }
+    const selectOption = (value: string) => { if (!step) return; const cur = answers[step.id] || ''; let nv: string; if (isMulti(step)) { const sel = cur ? cur.split('、').filter(Boolean) : []; const idx = sel.indexOf(value); idx >= 0 ? sel.splice(idx, 1) : sel.push(value); nv = sel.join('、') } else { nv = cur === value ? '' : value }; setCustomTexts(prev => ({ ...prev, [step.id]: '' })); const na = { ...answers, [step.id]: nv }; if (!nv) delete na[step.id]; setAnswers(na); saveProgress(na) }
     const handleSubmit = () => { const fa = { ...answers }; const lines = [loc.questionnaire.myAnswer]; for (const s of normSteps) { const val = fa[s.id] || preSelected[s.id]; if (val) lines.push(`- ${s.question}：${val}`) }; onComplete(lines.join('\n')) }
     if (showReview) return <div style={{ margin: '12px 0', padding: 16, background: token.colorFillAlter, borderRadius: 12, border: `1px solid ${token.colorBorderSecondary}` }}>
         <Text strong style={{ display: 'block', marginBottom: 16, fontSize: 14, color: token.colorText }}>{loc.questionnaire.confirmSelection}</Text>
@@ -49,11 +50,11 @@ export default function QuestionnaireForm({ steps, initialAnswers, onSaveProgres
         <Text strong style={{ display: 'block', marginBottom: 12, fontSize: 14, color: token.colorText }}>{step.question}</Text>
         <div style={{ marginBottom: 12 }}>
             {step.options && step.options.length > 0 && <Space style={{ marginBottom: 10 }} wrap>{step.options.map(opt => { const isSelected = (answers[step.id!] || '').split('、').includes(opt); return <Button key={opt} size="small" type={isSelected ? 'primary' : 'default'} onClick={() => selectOption(opt)}>{opt}{isSelected && ' ✓'}</Button> })}</Space>}
-            <Input.TextArea rows={2} placeholder={step.input ? loc.questionnaire.inputPlaceholder : loc.questionnaire.customAnswerPlaceholder} value={customText} onChange={e => { setCustomText(e.target.value); const t = e.target.value.trim(); const na = { ...answers }; if (t) na[step!.id] = t; else if (!answers[step!.id]) delete na[step!.id]; setAnswers(na); saveProgress(na) }} />
+            <Input.TextArea rows={2} placeholder={step.input ? loc.questionnaire.inputPlaceholder : loc.questionnaire.customAnswerPlaceholder} value={customTexts[step.id] || ''} onChange={e => { setCustomTexts(prev => ({ ...prev, [step!.id]: e.target.value })); const t = e.target.value.trim(); const na = { ...answers }; if (t) na[step!.id] = t; else if (!answers[step!.id]) delete na[step!.id]; setAnswers(na); saveProgress(na) }} />
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: `1px solid ${token.colorBorderSecondary}`, paddingTop: 12 }}>
             <Button size="small" icon={<ArrowLeftOutlined />} disabled={currentIdx === 0} onClick={() => setCurrentIdx(currentIdx - 1)} />
-            <Button size="small" type="primary" icon={<RightOutlined />} onClick={() => { const val = customText.trim() || answers[step!.id] || currentDefault; if (!val) return; const na = { ...answers, [step!.id]: val }; setAnswers(na); saveProgress(na); if (currentIdx === total - 1) setShowReview(true); else setCurrentIdx(currentIdx + 1) }} />
+            <Button size="small" type="primary" icon={<RightOutlined />} onClick={() => { const val = (customTexts[step!.id] || '').trim() || answers[step!.id] || currentDefault; if (!val) return; const na = { ...answers, [step!.id]: val }; setAnswers(na); saveProgress(na); if (currentIdx === total - 1) setShowReview(true); else setCurrentIdx(currentIdx + 1) }} />
         </div>
     </div>
 }

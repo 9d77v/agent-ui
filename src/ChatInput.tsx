@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Input, Button, Select, Tooltip, Dropdown, Typography, Space, theme } from 'antd'
-import { CheckOutlined, SettingOutlined, FileAddOutlined, PictureOutlined, CloseOutlined, ToolOutlined, PauseCircleOutlined, EnterOutlined } from '@ant-design/icons'
+import { CheckOutlined, SettingOutlined, FileAddOutlined, PictureOutlined, CloseOutlined, ToolOutlined, PauseCircleOutlined, EnterOutlined, ThunderboltOutlined } from '@ant-design/icons'
 import { useAgentLocale } from './locale/index'
 import type { ModelOption, SelectedFile, SelectedImage } from './types'
 
@@ -23,6 +23,8 @@ export interface ChatInputProps {
     onRemoveImage?: (index: number) => void
     onRemoveFile?: (index: number) => void
     onPasteImage?: (file: File) => void
+    /** 快捷文本（Agent 面板输入组件一键发送；label=text，hover chip 展开点击即发送） */
+    quickTexts?: string[]
 }
 
 export default function ChatInput(p: ChatInputProps) {
@@ -125,6 +127,16 @@ export default function ChatInput(p: ChatInputProps) {
                     <Tooltip title={loc.chatInput.toolConfigTooltip}><Button type="text" size="small" icon={<ToolOutlined style={{ fontSize: 14 }} />} onClick={p.onToolConfigOpen} /></Tooltip>
                 </>}
                 <div style={{ flex: 1 }} />
+                {/* 发送中（输入框禁用 + 停止按钮可见）：chip 置灰且不挂 Dropdown，hover 不显示快捷文本 */}
+                {p.quickTexts && p.quickTexts.length > 0 && (
+                    sending ? (
+                        <Button type="text" size="small" disabled icon={<ThunderboltOutlined />} />
+                    ) : (
+                        <Dropdown trigger={['hover']} menu={{ items: p.quickTexts.map((t, i) => ({ key: String(i), label: t })), onClick: ({ key }) => onSend(p.quickTexts![Number(key)]) }}>
+                            <Button type="text" size="small" icon={<ThunderboltOutlined />} />
+                        </Dropdown>
+                    )
+                )}
             </div>
         </div>
     )

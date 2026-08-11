@@ -42,5 +42,7 @@ export { default as SessionHistory } from './SessionHistory'
 export { default as QuestionnaireForm } from './QuestionnaireForm'
 export type { QuestionStep } from './QuestionnaireForm'
 
+export { default as PlanReview } from './PlanReview'
+
 export { default as TokenProgress } from './TokenProgress'
 export { default as ErrorBoundary } from './ErrorBoundary'

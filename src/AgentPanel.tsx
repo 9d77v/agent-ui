@@ -10,6 +10,7 @@ import ApprovalStatusBar from './ApprovalStatusBar'
 import CommandApproval from './CommandApproval'
 import SessionHistory from './SessionHistory'
 import QuestionnaireForm from './QuestionnaireForm'
+import PlanReview from './PlanReview'
 import ErrorBoundary from './ErrorBoundary'
 import { AgentUIContext, defaultLocale, type AgentUILocale } from './locale/index'
 import { ToolConfigModal, FilePickerModal } from './modal'
@@ -73,6 +74,8 @@ export interface PanelProps {
     onRemoveFile?: (index: number) => void
     onClearImages?: () => void
     onPasteImage?: (file: File) => void
+    /** 快捷文本（Agent 面板输入组件一键发送；label=text，hover chip 展开点击即发送） */
+    quickTexts?: string[]
     sessions?: SessionInfo[]
     onLoadSessions?: () => Promise<void>
     onOpenSession?: (sid: string, sessionInfo?: SessionInfo) => Promise<AgentMessage[]>
@@ -166,12 +169,14 @@ export default function FrameworkAgentPanel(props: PanelProps) {
         setApprovalIndex(i => Math.min(Math.max(0, ws.pendingApprovals.length - 1), i + 1))
     }, [ws.pendingApprovals.length])
     const [questionnaireData, setQuestionnaireData] = useState<{ id: string; questions: any[] } | null>(null)
+    const [planApproval, setPlanApproval] = useState<{ id: string; content: string } | null>(null)
     const [toolConfigOpen, setToolConfigOpen] = useState(false)
     const [filePickerOpen, setFilePickerOpen] = useState(false)
 
     useEffect(() => { setSessionID(props.sessionID); if (!props.sessionID) msgTree.clearMessages() }, [props.sessionID])
     useEffect(() => { if (props.sessions) setSessions(props.sessions) }, [props.sessions])
     useEffect(() => { setQuestionnaireData(ws.questionnaireData) }, [ws.questionnaireData])
+    useEffect(() => { setPlanApproval(ws.planApproval) }, [ws.planApproval])
 
     // 发送：文本由 ChatInput 内部管理（非受控），发送时经 onSend(text) 回调传入，避免打字整树重渲染
     const handleSend = useCallback(async (text?: string) => {
@@ -298,6 +303,13 @@ export default function FrameworkAgentPanel(props: PanelProps) {
                                     if (ok) setQuestionnaireData(null)
                                 }} darkMode={darkMode} />
                         )}
+                        {planApproval && (
+                            <PlanReview summary={planApproval.content}
+                                onApprove={() => ws.sendPlanApproval(planApproval.id, 'approve')}
+                                onEdit={(edited: string) => ws.sendPlanApproval(planApproval.id, 'edit', edited)}
+                                onClose={() => ws.sendPlanApproval(planApproval.id, 'close')}
+                                darkMode={darkMode} />
+                        )}
                         {props.bottomPanels}
                         {rosterAgents.length > 0 && (
                             <div style={{ padding: '6px 12px 0', flexShrink: 0 }}>
@@ -317,7 +329,8 @@ export default function FrameworkAgentPanel(props: PanelProps) {
                             onAddImageOpen={props.onAddImageOpen}
                             onRemoveImage={props.onRemoveImage}
                             onRemoveFile={props.onRemoveFile}
-                            onPasteImage={props.onPasteImage} />
+                            onPasteImage={props.onPasteImage}
+                            quickTexts={props.quickTexts} />
                         <ApprovalStatusBar approvalMode={approvalMode} onModeChange={handleApprovalModeChange}
                             tokenUsage={props.tokenUsage || null} currentContextWindow={props.currentContextWindow || 0} darkMode={darkMode} />
                     </>

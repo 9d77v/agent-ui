@@ -71,6 +71,8 @@ declare module 'agent-ui' {
         onRemoveFile?: (index: number) => void
         onClearImages?: () => void
         onPasteImage?: (file: File) => void
+        /** 快捷文本（Agent 面板输入组件一键发送；label=text，hover chip 展开点击即发送） */
+        quickTexts?: string[]
         sessions?: SessionInfo[]; onLoadSessions?: () => Promise<void>
         onOpenSession?: (sid: string, sessionInfo?: SessionInfo) => Promise<AgentMessage[]>
         onDeleteSession?: (sessionID: string) => Promise<{ success: boolean; error?: string }>
@@ -113,6 +115,36 @@ declare module 'agent-ui' {
     export default FrameworkAgentPanel
     /** last-known roster 合并纯函数（广播 upsert 不移除、快照补历史、按 parent_id 过滤） */
     export function mergeRosterAgents(lastKnown: Map<string, AgentStatus>, wsAgents: AgentStatus[] | undefined, sessionAgents: AgentStatus[] | undefined, sessionID: string): AgentStatus[]
+
+    // ---- ChatInput ----
+    export interface ChatInputProps {
+        inputText?: string
+        onInputChange?: (v: string) => void
+        onSend: (text?: string) => void
+        sending: boolean
+        onCancel: () => void
+        onKeyDown?: (e: React.KeyboardEvent) => void
+        darkMode?: boolean
+        onFilePickerOpen?: () => void
+        includeProjectDocs?: boolean
+        onToggleDocs?: () => void
+        modelOptions?: ModelOption[]
+        currentModel?: string
+        onModelChange?: (v: string) => void
+        onManageModels?: () => void
+        thinking?: string
+        onThinkingChange?: (v: string) => void
+        onToolConfigOpen?: () => void
+        selectedFiles?: SelectedFile[]
+        selectedImages?: SelectedImage[]
+        onAddImageOpen?: () => void
+        onRemoveImage?: (index: number) => void
+        onRemoveFile?: (index: number) => void
+        onPasteImage?: (file: File) => void
+        /** 快捷文本（Agent 面板输入组件一键发送；label=text，hover chip 展开点击即发送） */
+        quickTexts?: string[]
+    }
+    export const ChatInput: React.FC<ChatInputProps>
 
     // ---- Message 组件 ----
     export interface MessageBubbleProps {
@@ -169,6 +201,16 @@ declare module 'agent-ui' {
     export const TokenProgress: React.FC<TokenProgressProps>
 
     export const ErrorBoundary: React.FC<{ onReset?: () => void; darkMode?: boolean; children?: ReactNode }>
+
+    // ---- PlanReview（计划审阅卡片） ----
+    export interface PlanReviewProps {
+        summary: string
+        onApprove: (plan: string) => void
+        onEdit: (plan: string) => void
+        onClose: () => void
+        darkMode?: boolean
+    }
+    export const PlanReview: React.FC<PlanReviewProps>
 
     // ---- Modal ----
     export interface AgentModalProps { open: boolean; onClose: () => void; title?: string; titleIcon?: ReactNode; width?: number; height?: number; darkMode?: boolean; children: ReactNode; footer?: ReactNode }

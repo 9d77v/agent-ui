@@ -3,8 +3,7 @@ import { Typography, Button, theme } from 'antd'
 import { AgentMessage } from './hooks/useMessageTree'
 import ToolTimeline from './ToolTimeline'
 import type { ToolViewItem } from './types'
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
+import MarkdownRenderer from './Markdown'
 import { useAgentLocale } from './locale/index'
 
 const { Text } = Typography
@@ -112,21 +111,5 @@ export default function MessageBubble({ msg, darkMode, streamingMsgId, onOpenFil
             </div>
         )}
         {msg.retryInfo && !msg.retryInfo.done && <div style={{ marginTop: 8 }}><Button size="small" type="primary" danger onClick={() => onRetry(msg.retryInfo!)}>{loc.message.retryButton}</Button></div>}
-    </div>
-}
-
-function MarkdownRenderer({ content }: { content: string }) {
-    const { token } = theme.useToken()
-    const extraStyle = `
-        .markdown-body pre { background: ${token.colorFillContent} !important; border-color: ${token.colorBorderSecondary} !important; }
-        .markdown-body code { background: ${token.colorFillSecondary} !important; color: ${token.colorText} !important; }
-        .markdown-body pre code { background: transparent !important; }
-        .markdown-body th { background: ${token.colorFillAlter} !important; }
-        .markdown-body td, .markdown-body th { border-color: ${token.colorBorderSecondary} !important; }
-        .markdown-body blockquote { color: ${token.colorTextSecondary} !important; }
-    `
-    return <div className="markdown-body" style={{ fontSize: 13, lineHeight: 1.6, color: token.colorText }}>
-        <style>{extraStyle}</style>
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
     </div>
 }
