@@ -202,16 +202,6 @@ declare module 'agent-ui' {
 
     export const ErrorBoundary: React.FC<{ onReset?: () => void; darkMode?: boolean; children?: ReactNode }>
 
-    // ---- PlanReview（计划审阅卡片） ----
-    export interface PlanReviewProps {
-        summary: string
-        onApprove: (plan: string) => void
-        onEdit: (plan: string) => void
-        onClose: () => void
-        darkMode?: boolean
-    }
-    export const PlanReview: React.FC<PlanReviewProps>
-
     // ---- Modal ----
     export interface AgentModalProps { open: boolean; onClose: () => void; title?: string; titleIcon?: ReactNode; width?: number; height?: number; darkMode?: boolean; children: ReactNode; footer?: ReactNode }
     export const AgentModal: React.FC<AgentModalProps>

@@ -50,8 +50,8 @@ export default function ToolCallCard({ tool, darkMode, defaultExpanded, onHandof
                 return JSON.stringify(obj, null, 2)
             })()}</pre></>}
             {tool.status !== 'executing' && tool.result && <><Text type="secondary" style={{ fontSize: 11 }}>{tool.result.success ? loc.tool.outputLabel : loc.tool.errorLabel}</Text><pre style={{ margin: '2px 0 0', padding: '6px 8px', background: token.colorFillContent, borderRadius: 4, fontSize: 11, color: tool.result.success ? token.colorText : token.colorError, overflow: 'auto', maxHeight: 200, fontFamily: "'Cascadia Code',Consolas,monospace", whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>{tool.result.output || tool.result.error || ''}</pre></>}
-            {/* 子代理执行过程 + 交接按钮 + agent_id（run_subagent/agent_start 结果，位于 result.data；仅前端展示，不作为 LLM 上下文） */}
-            {(tool.name === 'run_subagent' || tool.name === 'agent_start') && tool.status !== 'executing' && (() => {
+            {/* 子代理执行过程 + 交接按钮 + agent_id（run_subagent 统一派发结果，位于 result.data；仅前端展示，不作为 LLM 上下文） */}
+            {tool.name === 'run_subagent' && tool.status !== 'executing' && (() => {
                 const r = (tool.result as any)
                 let sub: any = r?.data
                 if (typeof sub === 'string') { try { sub = JSON.parse(sub) } catch { sub = null } }

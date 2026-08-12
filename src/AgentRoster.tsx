@@ -5,7 +5,7 @@ import type { AgentStatus } from './types'
 
 const { Text } = Typography
 
-const statusMeta: Record<string, { label: string; color: string }> = {
+export const statusMeta: Record<string, { label: string; color: string }> = {
     idle: { label: '待命', color: 'default' },
     queued: { label: '排队中', color: 'warning' },
     running: { label: '运行中', color: 'processing' },

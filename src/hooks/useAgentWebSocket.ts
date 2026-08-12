@@ -26,10 +26,6 @@ interface WsOutput {
     pendingApprovals: { approvalId: string; command: string; riskLevel: string; agent?: string }[]
     questionnaireData: { id: string; questions: any[] } | null
     setQuestionnaireData: (v: { id: string; questions: any[] } | null) => void
-    /** 计划审批（plan_approval_request 推送，PlanReview 卡片渲染数据） */
-    planApproval: { id: string; content: string } | null
-    /** 提交计划审批决策（approve/edit/close；edit 时 edited 为用户编辑后的计划文本） */
-    sendPlanApproval: (id: string, decision: string, edited?: string) => void
     setPendingApprovals: React.Dispatch<React.SetStateAction<{ approvalId: string; command: string; riskLevel: string; agent?: string }[]>>
     handleApproveTool: (approvalId: string) => void
     handleRejectTool: (approvalId: string) => void
@@ -61,7 +57,6 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
     const pendingApprovalsRef = useRef(0)
     useEffect(() => { pendingApprovalsRef.current = pendingApprovals.length }, [pendingApprovals])
     const [questionnaireData, setQuestionnaireData] = useState<{ id: string; questions: any[] } | null>(null)
-    const [planApproval, setPlanApproval] = useState<{ id: string; content: string } | null>(null)
     const [agents, setAgents] = useState<AgentStatus[]>([])    
 
     const { messageTree, sessionID, currentModel, activeProviderId, thinking, approvalMode, includeProjectDocs, getWebSocketURL } = input
@@ -83,7 +78,6 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
         pendingApprovalsRef.current = 0
         setPendingApprovals([])
         setQuestionnaireData(null)
-        setPlanApproval(null)
         if (wsRef.current) { wsRef.current.close(); wsRef.current = null }
     }, [])
 
@@ -183,14 +177,6 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
                 // 问卷超时/取消/失效：收起表单并提示（后端广播，不再静默无反馈）
                 setQuestionnaireData(null)
                 window.dispatchEvent(new CustomEvent('questionnaire-cancelled', { detail: { reason: content || text || '问卷已失效' } }))
-                break
-            case 'plan_approval_request':
-                // 计划审批请求：PlanReview 卡片展示计划摘要，等待用户批准/编辑/关闭（无超时）
-                setPlanApproval({ id: data.plan_approval_id, content: content || text || '' })
-                break
-            case 'plan_approval_cancelled':
-                // 计划审批失效（无等待者/会话终止）：收起 PlanReview 卡片
-                setPlanApproval(null)
                 break
             case 'token_usage':
                 try { window.dispatchEvent(new CustomEvent('token-usage-update', { detail: JSON.parse(data.tool_args || '{}') })) } catch {}
@@ -431,12 +417,5 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
         return true
     }, [sendWsMessage])
 
-    // 提交计划审批决策：后端 plan_approval 工具阻塞等待该消息（ResolvePlanApproval），
-    // 决策 JSON（approve/edit/close + plan?）作为工具结果回传 LLM，主 agent 继续编排。
-    const sendPlanApproval = useCallback((id: string, decision: string, edited?: string) => {
-        setPlanApproval(null)
-        sendWsMessage({ type: 'plan_approve', plan_approval_id: id, text: JSON.stringify({ decision, plan: edited }) })
-    }, [sendWsMessage])
-
-    return { sendText, sending, wsRef, streamingMsgIdRef, streamingMsgId, pendingApprovals, questionnaireData, setQuestionnaireData, planApproval, sendPlanApproval, setPendingApprovals, handleApproveTool, handleRejectTool, handleRevertFile, handleOpenFile, handleCancel, handleRetry, handleContinue, submitQuestionnaireAnswer, updateApprovalMode, agents }
+    return { sendText, sending, wsRef, streamingMsgIdRef, streamingMsgId, pendingApprovals, questionnaireData, setQuestionnaireData, setPendingApprovals, handleApproveTool, handleRejectTool, handleRevertFile, handleOpenFile, handleCancel, handleRetry, handleContinue, submitQuestionnaireAnswer, updateApprovalMode, agents }
 }

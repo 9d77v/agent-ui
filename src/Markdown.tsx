@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
 /**
- * MarkdownRenderer 共享 markdown 渲染组件（MessageBubble / PlanReview 等共用）。
+ * MarkdownRenderer 共享 markdown 渲染组件（MessageBubble 等共用）。
  * ReactMarkdown + remarkGfm + antd token 主题样式注入（.markdown-body class 承接收敛样式）。
  * 提取自 MessageBubble.tsx 原内部实现，避免多处重复同款渲染。
  */

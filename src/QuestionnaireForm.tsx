@@ -54,7 +54,7 @@ export default function QuestionnaireForm({ steps, initialAnswers, onSaveProgres
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: `1px solid ${token.colorBorderSecondary}`, paddingTop: 12 }}>
             <Button size="small" icon={<ArrowLeftOutlined />} disabled={currentIdx === 0} onClick={() => setCurrentIdx(currentIdx - 1)} />
-            <Button size="small" type="primary" icon={<RightOutlined />} onClick={() => { const val = (customTexts[step!.id] || '').trim() || answers[step!.id] || currentDefault; if (!val) return; const na = { ...answers, [step!.id]: val }; setAnswers(na); saveProgress(na); if (currentIdx === total - 1) setShowReview(true); else setCurrentIdx(currentIdx + 1) }} />
+            <Button size="small" type="primary" icon={total === 1 ? <CheckOutlined /> : <RightOutlined />} disabled={total === 1 && !(answers[step!.id] || preSelected[step!.id])} onClick={() => { if (total === 1) { handleSubmit(); return } const val = (customTexts[step!.id] || '').trim() || answers[step!.id] || currentDefault; if (!val) return; const na = { ...answers, [step!.id]: val }; setAnswers(na); saveProgress(na); if (currentIdx === total - 1) setShowReview(true); else setCurrentIdx(currentIdx + 1) }}>{total === 1 ? loc.questionnaire.submit : ''}</Button>
         </div>
     </div>
 }
