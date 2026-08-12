@@ -313,7 +313,7 @@ export default function FrameworkAgentPanel(props: PanelProps) {
                             thinking={props.thinking || 'off'} onThinkingChange={props.onThinkingChange || (() => {})}
                             onFilePickerOpen={props.filePicker ? () => setFilePickerOpen(true) : (props.onFilePickerOpen || (() => {}))}
                             includeProjectDocs={props.includeProjectDocs !== undefined ? props.includeProjectDocs : true}
-                            onToggleDocs={props.onToggleDocs} onToolConfigOpen={props.toolConfig ? () => setToolConfigOpen(true) : (props.onToolConfigOpen || (() => {}))}
+                            onToggleDocs={props.onToggleDocs} onToolConfigOpen={props.toolConfig ? () => setToolConfigOpen(true) : props.onToolConfigOpen}
                             selectedFiles={props.selectedFiles}
                             selectedImages={props.selectedImages}
                             onAddImageOpen={props.onAddImageOpen}

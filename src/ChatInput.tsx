@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Input, Button, Select, Tooltip, Dropdown, Typography, Space, theme } from 'antd'
-import { CheckOutlined, SettingOutlined, FileAddOutlined, PictureOutlined, CloseOutlined, ToolOutlined, PauseCircleOutlined, EnterOutlined, ThunderboltOutlined } from '@ant-design/icons'
+import { CheckOutlined, SettingOutlined, FileAddOutlined, PictureOutlined, PlusOutlined, CloseOutlined, ToolOutlined, PauseCircleOutlined, EnterOutlined, ThunderboltOutlined } from '@ant-design/icons'
 import { useAgentLocale } from './locale/index'
 import type { ModelOption, SelectedFile, SelectedImage } from './types'
 
@@ -109,9 +109,23 @@ export default function ChatInput(p: ChatInputProps) {
                 </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', borderTop: `1px solid ${token.colorBorderSecondary}`, gap: 2 }}>
-                <Tooltip title={loc.chatInput.addFileTooltip}><Button type="text" size="small" icon={<FileAddOutlined />} onClick={p.onFilePickerOpen} /></Tooltip>
-                {p.onAddImageOpen && (
-                    <Tooltip title={loc.chatInput.addImageTooltip}><Button type="text" size="small" icon={<PictureOutlined />} onClick={p.onAddImageOpen} /></Tooltip>
+                {/* 十字添加按钮：hover 展开「添加文件 / 添加图片」两个选项（点击流程与原来一致） */}
+                {(p.onFilePickerOpen || p.onAddImageOpen) && (
+                    <Dropdown
+                        trigger={['hover']}
+                        menu={{
+                            items: [
+                                ...(p.onFilePickerOpen ? [{ key: 'file', icon: <FileAddOutlined />, label: loc.chatInput.addFileTooltip }] : []),
+                                ...(p.onAddImageOpen ? [{ key: 'image', icon: <PictureOutlined />, label: loc.chatInput.addImageTooltip }] : []),
+                            ],
+                            onClick: ({ key }) => {
+                                if (key === 'file') p.onFilePickerOpen?.()
+                                else if (key === 'image') p.onAddImageOpen?.()
+                            },
+                        }}
+                    >
+                        <Button type="text" size="small" icon={<PlusOutlined style={{ fontSize: 14 }} />} />
+                    </Dropdown>
                 )}
                 {p.onToggleDocs && <Tooltip title={p.includeProjectDocs ? loc.chatInput.docsAttachedTooltip : loc.chatInput.docsNotAttachedTooltip}>
                     <Button type="text" size="small" icon={<span style={{ fontSize: 13 }}>📄</span>} onClick={p.onToggleDocs} style={{ color: p.includeProjectDocs ? token.colorPrimary : token.colorTextTertiary, fontSize: 12 }}>{p.includeProjectDocs ? loc.chatInput.docsLabel : loc.chatInput.noDocsLabel}</Button>
@@ -124,7 +138,7 @@ export default function ChatInput(p: ChatInputProps) {
                     <div style={{ width: 1, height: 16, background: token.colorBorderSecondary, margin: '0 2px' }} />
                     <Select size="small" value={p.thinking} onChange={p.onThinkingChange} style={{ minWidth: 50 }} options={thinkingItems.map(t => ({ label: t.label, value: t.key }))} variant="borderless" suffixIcon={null} popupMatchSelectWidth={false} />
                     <div style={{ width: 1, height: 16, background: token.colorBorderSecondary, margin: '0 2px' }} />
-                    <Tooltip title={loc.chatInput.toolConfigTooltip}><Button type="text" size="small" icon={<ToolOutlined style={{ fontSize: 14 }} />} onClick={p.onToolConfigOpen} /></Tooltip>
+                    {p.onToolConfigOpen && <Tooltip title={loc.chatInput.toolConfigTooltip}><Button type="text" size="small" icon={<ToolOutlined style={{ fontSize: 14 }} />} onClick={p.onToolConfigOpen} /></Tooltip>}
                 </>}
                 <div style={{ flex: 1 }} />
                 {/* 发送中（输入框禁用 + 停止按钮可见）：chip 置灰且不挂 Dropdown，hover 不显示快捷文本 */}
