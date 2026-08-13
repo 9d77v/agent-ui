@@ -104,11 +104,11 @@ export default function MessageList(props: Props) {
 
     return (
         <div style={{ position: 'relative', height: '100%' }}>
-            <div ref={containerRef} style={{ height: '100%', overflow: 'auto', padding: '12px 16px' }}>
+            <div ref={containerRef} style={{ height: '100%', overflow: 'auto', padding: '16px 20px' }}>
                 {messageOrder.map(id => {
                     const msg = messageMap[id]
                     if (!msg) return null
-                    return <div key={msg.id} style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+                    return <div key={msg.id} style={{ marginBottom: 16, display: 'flex', flexDirection: 'column', alignItems: msg.role === 'user' ? 'flex-end' : 'flex-start', contentVisibility: 'auto', containIntrinsicSize: 'auto 120px' }}>
                         <MessageBubble msg={msg} darkMode={darkMode} streamingMsgId={streamingMsgId} onOpenFile={onOpenFile} onRetry={onRetry} onContinue={onContinue} onToggleReasoning={onToggleReasoning} toolAutoExpand={toolAutoExpand} onHandoff={onHandoff} />
                     </div>
                 })}

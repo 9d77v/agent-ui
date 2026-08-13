@@ -17,7 +17,7 @@ interface WsInput {
     getWebSocketURL: () => Promise<string>
 }
 
-interface WsOutput {
+export interface WsOutput {
     sendText: (text: string, images?: { url: string }[]) => void
     sending: boolean
     wsRef: React.MutableRefObject<WebSocket | null>
@@ -55,6 +55,9 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
     const [pendingApprovals, setPendingApprovals] = useState<{ approvalId: string; command: string; riskLevel: string; agent?: string }[]>([])
     // 待审数量 ref（供 handleWsMessage 判断 turn_complete 时是否保活 WS 与审批卡片）
     const pendingApprovalsRef = useRef(0)
+    // 停止后 WS 清理延时 ref：发送 cancel 后保持连接接收后端 cancelled 确认与最终 agent_status 广播，
+    // 避免立即关 WS 导致子代理 roster 冻结在 running；cancelled 到达后延迟 ~250ms 清理，1s 超时兜底。
+    const cancelCleanupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     useEffect(() => { pendingApprovalsRef.current = pendingApprovals.length }, [pendingApprovals])
     const [questionnaireData, setQuestionnaireData] = useState<{ id: string; questions: any[] } | null>(null)
     const [agents, setAgents] = useState<AgentStatus[]>([])    
@@ -72,6 +75,7 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
     }, [])
 
     const cleanup = useCallback(() => {
+        if (cancelCleanupTimerRef.current) { clearTimeout(cancelCleanupTimerRef.current); cancelCleanupTimerRef.current = null }
         if (pingRef.current) clearInterval(pingRef.current)
         setSending(false)
         setStreamingMsgId(null)
@@ -80,6 +84,16 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
         setQuestionnaireData(null)
         if (wsRef.current) { wsRef.current.close(); wsRef.current = null }
     }, [])
+
+    // 停止后延迟清理：发送 cancel 后不立即关 WS（保持连接接收后端 cancelled 确认与最终 agent_status 广播），
+    // cancelled 到达后延迟 ~250ms 清理；1s 超时兑底确保 WS 最终关闭（防 cancelled 丢失导致连接悬挂）。
+    const scheduleCancelCleanup = useCallback((delayMs: number) => {
+        if (cancelCleanupTimerRef.current) clearTimeout(cancelCleanupTimerRef.current)
+        cancelCleanupTimerRef.current = setTimeout(() => {
+            cancelCleanupTimerRef.current = null
+            cleanup()
+        }, delayMs)
+    }, [cleanup])
 
     const handleWsMessage = useCallback((data: any) => {
         const { type, stream_id, msg_id, call_id, delta, tool_name, tool_args, file_path,
@@ -201,6 +215,9 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
                     }))
                 }
                 setStreaming(null)
+                // 后端确认后延迟 ~250ms 清理：让最终 agent_status 广播（如 running→suspended）先行送达，
+                // 避免 roster 冻结在旧状态；handleCancel 的 1s 超时已兜底。
+                scheduleCancelCleanup(250)
                 break
             case 'turn_complete':
                 // 非当前流忽略：旧流/残留连接的回合完成消息不得误杀当前审批（清卡片、关 WS）
@@ -252,7 +269,7 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
                 window.dispatchEvent(new CustomEvent('agent-terminal-data', { detail: { text, is_stderr } }))
                 break
         }
-    }, [messageTree, setStreaming, cleanup])
+    }, [messageTree, setStreaming, cleanup, scheduleCancelCleanup])
 
     useEffect(() => () => cleanup(), [cleanup])
 
@@ -393,9 +410,11 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
                 content: msg.content + (msg.content ? '\n\n' : '') + '⏹ 已停止',
             }))
         }
-        cleanup()
         setStreaming(null)
-    }, [sendWsMessage, sessionID, cleanup, messageTree, setStreaming])
+        // 不再同步 cleanup() 关 WS：保持连接接收后端 cancelled 确认与最终 agent_status 广播
+        // （否则停止后子代理 roster 冻结在 running）。1s 超时兜底确保 WS 最终关闭。
+        scheduleCancelCleanup(1000)
+    }, [sendWsMessage, sessionID, messageTree, setStreaming, scheduleCancelCleanup])
 
     const handleRetry = useCallback((retryInfo: any) => {
         sendWsMessage({ type: 'retry', session_id: retryInfo.sessionId, message_id: retryInfo.messageId, message: retryInfo.message, model: retryInfo.model, provider_id: retryInfo.providerId, thinking: retryInfo.thinking, approval_mode: approvalMode })

@@ -54,6 +54,10 @@ export interface SelectedFile {
 export interface SelectedImage {
     url: string
     name: string
+    /** 压缩后 data URI 预览（webview 加载本地 file:// 不可靠，用后端返回的 base64） */
+    preview?: string
+    /** 压缩后字节数 */
+    size?: number
 }
 
 /** 待审批项 */
@@ -71,6 +75,8 @@ export interface SessionInfo {
     msg_count?: number
     last_time?: string
     token_usage?: any
+    /** 会话是否固定（固定会话在列表置顶） */
+    pinned?: boolean
 }
 
 /** token 用量 */

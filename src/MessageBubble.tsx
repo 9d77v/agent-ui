@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import { Typography, Button, theme } from 'antd'
 import { AgentMessage } from './hooks/useMessageTree'
 import ToolTimeline from './ToolTimeline'
@@ -20,7 +20,7 @@ export interface MessageBubbleProps {
     onHandoff?: (label: string, prompt: string) => void
 }
 
-export default function MessageBubble({ msg, darkMode, streamingMsgId, onOpenFile, onRetry, onContinue, onToggleReasoning, toolAutoExpand, onHandoff }: MessageBubbleProps) {
+export default memo(function MessageBubble({ msg, darkMode, streamingMsgId, onOpenFile, onRetry, onContinue, onToggleReasoning, toolAutoExpand, onHandoff }: MessageBubbleProps) {
     const { token } = theme.useToken()
     const loc = useAgentLocale()
     const isStreaming = streamingMsgId === msg.id
@@ -112,4 +112,4 @@ export default function MessageBubble({ msg, darkMode, streamingMsgId, onOpenFil
         )}
         {msg.retryInfo && !msg.retryInfo.done && <div style={{ marginTop: 8 }}><Button size="small" type="primary" danger onClick={() => onRetry(msg.retryInfo!)}>{loc.message.retryButton}</Button></div>}
     </div>
-}
+})

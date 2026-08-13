@@ -22,6 +22,8 @@ export interface ChatInputLocale {
     thinkingOff: string
     thinkingDefault: string
     thinkingDeep: string
+    /** 已选图片数/上限（{n}/{max} 为占位符） */
+    imageCountLabel: string
     /** 附加文件引用的标签（发送消息时附在路径列表前的标题） */
     attachedFilesLabel: string
 }
@@ -86,6 +88,18 @@ export interface SessionLocale {
     deleteFailed: string
     deleteButton: string
     cancelButton: string
+    /** 右键菜单：重命名 */
+    rename: string
+    /** 右键菜单：固定 */
+    pin: string
+    /** 右键菜单：取消固定 */
+    unpin: string
+    /** 重命名对话框标题 */
+    renameTitle: string
+    /** 重命名输入占位符 */
+    renamePlaceholder: string
+    /** 重命名成功提示 */
+    renameSuccess: string
 }
 
 /** 问卷 */

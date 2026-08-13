@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Input, Button, Select, Tooltip, Dropdown, Typography, Space, theme } from 'antd'
+import { Input, Button, Select, Tooltip, Dropdown, Typography, Space, Modal, theme } from 'antd'
 import { CheckOutlined, SettingOutlined, FileAddOutlined, PictureOutlined, PlusOutlined, CloseOutlined, ToolOutlined, PauseCircleOutlined, EnterOutlined, ThunderboltOutlined } from '@ant-design/icons'
 import { useAgentLocale } from './locale/index'
 import type { ModelOption, SelectedFile, SelectedImage } from './types'
@@ -19,6 +19,8 @@ export interface ChatInputProps {
     thinking?: string; onThinkingChange?: (v: string) => void; onToolConfigOpen?: () => void
     selectedFiles?: SelectedFile[]
     selectedImages?: SelectedImage[]
+    /** 单条消息最大可附加图片数（用于显示「已选 n/max」；缺省不显示） */
+    maxImages?: number
     onAddImageOpen?: () => void
     onRemoveImage?: (index: number) => void
     onRemoveFile?: (index: number) => void
@@ -34,6 +36,8 @@ export default function ChatInput(p: ChatInputProps) {
     // 非受控模式：文本由组件内部管理（打字只重渲染 ChatInput，避免父组件整树重渲染卡顿）；
     // 兼容受控模式：外部传入 inputText 时同步。
     const [text, setText] = useState(inputText || '')
+    // 图片大图预览（点击缩略图打开 Modal；关闭按钮位于图片右上角）
+    const [previewImg, setPreviewImg] = useState<SelectedImage | null>(null)
     useEffect(() => {
         if (inputText !== undefined) setText(inputText)
     }, [inputText])
@@ -66,9 +70,14 @@ export default function ChatInput(p: ChatInputProps) {
             )}
             {p.selectedImages && p.selectedImages.length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, padding: '4px 8px 0' }}>
+                    {p.maxImages ? (
+                        <span style={{ fontSize: 11, color: token.colorTextTertiary, alignSelf: 'center', marginRight: 2 }}>
+                            {loc.chatInput.imageCountLabel.replace('{n}', String(p.selectedImages.length)).replace('{max}', String(p.maxImages))}
+                        </span>
+                    ) : null}
                     {p.selectedImages.map((img, i) => (
                         <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 6px', borderRadius: 4, fontSize: 11, background: token.colorFillAlter, color: token.colorPrimary, maxWidth: 200 }}>
-                            <img src={img.url} alt={img.name} style={{ width: 22, height: 22, objectFit: 'cover', borderRadius: 3 }} />
+                            <img src={img.preview || img.url} alt={img.name} onClick={() => setPreviewImg(img)} style={{ width: 22, height: 22, objectFit: 'cover', borderRadius: 3, cursor: 'zoom-in' }} />
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{img.name}</span>
                             <CloseOutlined style={{ cursor: 'pointer', fontSize: 10, color: token.colorTextTertiary }} onClick={() => p.onRemoveImage?.(i)} />
                         </span>
@@ -152,6 +161,25 @@ export default function ChatInput(p: ChatInputProps) {
                     )
                 )}
             </div>
+
+            {/* 图片大图预览（Modal 右上角 X 即图片右上角，避免与窗口关闭按钮重叠） */}
+            {previewImg && (
+                <Modal
+                    open
+                    onCancel={() => setPreviewImg(null)}
+                    footer={null}
+                    title={null}
+                    centered
+                    width="fit-content"
+                    styles={{ body: { padding: 8 } }}
+                >
+                    <img
+                        src={previewImg.preview || previewImg.url}
+                        alt={previewImg.name}
+                        style={{ maxWidth: '70vw', maxHeight: '70vh', display: 'block' }}
+                    />
+                </Modal>
+            )}
         </div>
     )
 }

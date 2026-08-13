@@ -9,6 +9,9 @@ export type { AgentMessage, ToolCallEntry, MessageTree } from './hooks/useMessag
 
 export { useAgentWebSocket } from './hooks/useAgentWebSocket'
 
+export { useAgentPanelState } from './hooks/useAgentPanelState'
+export type { UseAgentPanelStateOptions, UseAgentPanelStateResult, PendingApprovalItem } from './hooks/useAgentPanelState'
+
 export { useModelLoader } from './hooks/useModelLoader'
 export type { ModelOption, ModelState, ConfigProvider } from './hooks/useModelLoader'
 

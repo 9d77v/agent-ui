@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Typography, Tag, Space, Tabs, theme } from 'antd'
-import { RobotOutlined, DownOutlined, RightOutlined } from '@ant-design/icons'
+import { RobotOutlined } from '@ant-design/icons'
 import type { AgentStatus } from './types'
 
 const { Text } = Typography
@@ -31,11 +31,11 @@ function byNewest(a: AgentStatus, b: AgentStatus): number {
 }
 
 /**
- * AgentRoster 子代理编排列表（只读展示，可折叠）。
- * 默认收缩成一行（标题 + 数量），点击展开：常驻 / 一次性 两个 tab 分组展示，
- * 每组按「最新生成在前」排序（用户决策：一次性瞬态不淘汰、与常驻 tab 区分）。
+ * AgentRoster 子代理编排列表（只读展示，常驻展开）。
+ * 常驻 / 一次性 两个 tab 分组展示，每组按「最新生成在前」排序
+ * （用户决策：一次性瞬态不淘汰、与常驻 tab 区分）。
  * 状态经 agent_status 广播或 GetSessionAgents 提供。
- * 子代理完成（agent_done）→ 对应行闪烁 3 次；若折叠自动展开并切到所在 tab（不弹消息）。
+ * 子代理完成（agent_done）→ 对应行闪烁 3 次并切到所在 tab（不弹消息）。
  */
 export default function AgentRoster({ agents, darkMode, onSelect }: {
     agents: AgentStatus[]
@@ -44,7 +44,6 @@ export default function AgentRoster({ agents, darkMode, onSelect }: {
     onSelect?: (agent: AgentStatus) => void
 }) {
     const { token } = theme.useToken()
-    const [collapsed, setCollapsed] = useState(true)
     const [tab, setTab] = useState('resident')
     const [flashIDs, setFlashIDs] = useState<Set<string>>(new Set())
     const agentsRef = useRef(agents)
@@ -52,7 +51,6 @@ export default function AgentRoster({ agents, darkMode, onSelect }: {
     const resident = agents.filter(a => !a.transient).sort(byNewest)
     const transient = agents.filter(a => a.transient).sort(byNewest)
     const total = agents.length
-    const toggle = () => setCollapsed(v => !v)
 
     // 子代理完成/失败（agent_done WS → useAgentWebSocket dispatch 的 CustomEvent）→ 行闪烁反馈：
     // 若折叠自动展开、切到所在 tab（常驻/一次性），对应行闪烁 3 次后恢复（2.4s 定时清除，留动画余量）。
@@ -63,7 +61,6 @@ export default function AgentRoster({ agents, darkMode, onSelect }: {
             if (!id) return
             const target = agentsRef.current.find(a => a.agent_id === id)
             if (target) setTab(target.transient ? 'transient' : 'resident')
-            setCollapsed(false)
             setFlashIDs(prev => new Set(prev).add(id))
             setTimeout(() => {
                 setFlashIDs(prev => {
@@ -129,19 +126,13 @@ export default function AgentRoster({ agents, darkMode, onSelect }: {
         <>
             <style>{flashKeyframes}</style>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <div
-                    style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 0', cursor: total > 0 ? 'pointer' : 'default' }}
-                    onClick={total > 0 ? toggle : undefined}
-                >
-                    {total > 0
-                        ? (collapsed ? <RightOutlined style={{ fontSize: 10, color: token.colorTextTertiary }} /> : <DownOutlined style={{ fontSize: 10, color: token.colorTextTertiary }} />)
-                        : <span style={{ width: 10 }} />}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 0' }}>
                     <RobotOutlined style={{ fontSize: 12, color: token.colorPrimary }} />
                     <Text strong style={{ fontSize: 12, color: token.colorText }}>子代理</Text>
                     {total > 0 && <Tag style={{ fontSize: 10, lineHeight: '14px', margin: 0 }}>{total}</Tag>}
                 </div>
                 {total === 0 && <Text type="secondary" style={{ fontSize: 11, paddingLeft: 14 }}>无运行中的子代理</Text>}
-                {!collapsed && total > 0 && (
+                {total > 0 && (
                     <Tabs size="small" activeKey={tab} onChange={setTab}
                         items={[
                             { key: 'resident', label: `常驻 ${resident.length}`, children: renderItems(resident) },

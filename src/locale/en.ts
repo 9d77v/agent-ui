@@ -23,6 +23,7 @@ export const enLocale: AgentUILocale = {
         thinkingOff: 'Off',
         thinkingDefault: 'Default',
         thinkingDeep: 'Deep',
+        imageCountLabel: 'Selected {n}/{max}',
         attachedFilesLabel: 'Attached files',
     },
     message: {
@@ -75,6 +76,12 @@ export const enLocale: AgentUILocale = {
         deleteFailed: 'Delete failed',
         deleteButton: 'Delete',
         cancelButton: 'Cancel',
+        rename: 'Rename',
+        pin: 'Pin',
+        unpin: 'Unpin',
+        renameTitle: 'Rename Session',
+        renamePlaceholder: 'Enter new session title',
+        renameSuccess: 'Renamed',
     },
     questionnaire: {
         myAnswer: 'My Answer:',

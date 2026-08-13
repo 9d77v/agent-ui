@@ -1,6 +1,6 @@
 declare module 'agent-ui' {
     import type { ReactNode } from 'react'
-    export interface SessionInfo { session_id: string; title: string; preview?: string; msg_count?: number; last_time?: string; token_usage?: any }
+    export interface SessionInfo { session_id: string; title: string; preview?: string; msg_count?: number; last_time?: string; token_usage?: any; pinned?: boolean }
     export interface ToolCallEntry { callId?: string; name: string; args: string; status: 'executing' | 'done' | 'error'; result?: any }
     export interface AgentMessageRetryInfo { messageId: string; sessionId: string; message: string; model: string; providerId: string; mode: string; thinking: string; done?: boolean }
     export interface AgentMessageFileDiff { filePath: string; original?: any; modified?: any }
@@ -9,10 +9,10 @@ declare module 'agent-ui' {
     export interface AgentStatus { agent_id: string; name: string; status: string; session_id: string; parent_id?: string; depth: number; task?: string; summary?: string; files_changed?: string[]; handoffs?: AgentHandoff[]; error?: string; transient?: boolean; created_at?: string; updated_at?: string }
 
     export interface PanelLocale { title: string; history: string; newSession: string }
-    export interface ChatInputLocale { placeholder: string; sendTooltip: string; stopTooltip: string; addFileTooltip: string; addImageTooltip: string; docsAttachedTooltip: string; docsNotAttachedTooltip: string; docsLabel: string; noDocsLabel: string; manageModelsLabel: string; modelLabel: string; toolConfigTooltip: string; thinkingOff: string; thinkingDefault: string; thinkingDeep: string; attachedFilesLabel: string }
+    export interface ChatInputLocale { placeholder: string; sendTooltip: string; stopTooltip: string; addFileTooltip: string; addImageTooltip: string; docsAttachedTooltip: string; docsNotAttachedTooltip: string; docsLabel: string; noDocsLabel: string; manageModelsLabel: string; modelLabel: string; toolConfigTooltip: string; thinkingOff: string; thinkingDefault: string; thinkingDeep: string; imageCountLabel: string; attachedFilesLabel: string }
     export interface MessageLocale { reasoningTitle: string; thinkingLabel: string; retryButton: string; continueButton: string; maxIterationsNote: string; truncatedSuffix: string; fileChangeLabel: string; revertButton: string }
     export interface ToolLocale { paramLabel: string; outputLabel: string; errorLabel: string; executingStatus: string; completedStatus: string; stepsLabel: string }
-    export interface ApprovalLocale { riskLevelDangerous: string; riskLevelModerate: string; riskLevelSafe: string; requiredTitle: string; skipButton: string; confirmButton: string; modeAuto: string; modeDefault: string; modeManual: string; allowButton: string; commandTitle: string; fileTitle: string; toolTitle: string; commandDesc: string; fileDesc: string; toolDesc: string; hiddenLines: string; collapse: string }
+    export interface ApprovalLocale { riskLevelDangerous: string; riskLevelModerate: string; riskLevelSafe: string; requiredTitle: string; skipButton: string; confirmButton: string; modeAuto: string; modeDefault: string; modeManual: string; allowButton: string; commandTitle: string; fileTitle: string; toolTitle: string; commandDesc: string; fileDesc: string; toolDesc: string; hiddenLines: string; collapse: string; pendingCount: string; approveAllButton: string }
     export type ApprovalKind = 'command' | 'file' | 'tool'
     export interface ParsedApproval { kind: ApprovalKind; filePath: string; display: string }
     export function parseApproval(command: string): ParsedApproval
@@ -66,6 +66,8 @@ declare module 'agent-ui' {
         selectedFiles?: SelectedFile[]
         onClearFiles?: () => void
         selectedImages?: SelectedImage[]
+        /** 单条消息最大可附加图片数（显示「已选 n/max」用；缺省不显示） */
+        maxImages?: number
         onAddImageOpen?: () => void
         onRemoveImage?: (index: number) => void
         onRemoveFile?: (index: number) => void
@@ -88,9 +90,76 @@ declare module 'agent-ui' {
         clearMessages: () => void
     }
     export function useMessageTree(): MessageTree
+
+    // ---- useAgentPanelState（FrameworkAgentPanel 状态抽取：会话/WS/审批/问卷/roster/发送） ----
+    export interface PendingApprovalItem { approvalId: string; command: string; riskLevel: string; agent?: string }
+    export interface UseAgentPanelStateOptions {
+        getWebSocketURL: () => Promise<string>
+        toolDisplayNames?: Record<string, string>
+        formatModelLabel?: (modelValue: string) => string
+        locale?: Partial<AgentUILocale>
+        sessionID: string
+        setSessionID: (id: string) => void
+        onNewSession?: () => void
+        darkMode?: boolean
+        currentModel?: string
+        activeProviderId?: string
+        thinking?: string
+        includeProjectDocs?: boolean
+        onHandoff?: (label: string, prompt: string) => void
+        initialApprovalMode?: string
+        sessionAgents?: AgentStatus[]
+        selectedFiles?: SelectedFile[]
+        onClearFiles?: () => void
+        selectedImages?: SelectedImage[]
+        onClearImages?: () => void
+        sessions?: SessionInfo[]
+    }
+    export interface UseAgentPanelStateResult {
+        msgTree: MessageTree
+        ws: {
+            sendText: (text: string, images?: { url: string }[]) => void
+            sending: boolean
+            wsRef: React.MutableRefObject<WebSocket | null>
+            streamingMsgIdRef: React.MutableRefObject<string | null>
+            streamingMsgId: string | null
+            pendingApprovals: PendingApprovalItem[]
+            questionnaireData: { id: string; questions: any[] } | null
+            setQuestionnaireData: (v: { id: string; questions: any[] } | null) => void
+            setPendingApprovals: React.Dispatch<React.SetStateAction<PendingApprovalItem[]>>
+            handleApproveTool: (approvalId: string) => void
+            handleRejectTool: (approvalId: string) => void
+            handleRevertFile: (filePath: string, backupPath: string) => void
+            handleOpenFile: (filePath: string) => void
+            handleCancel: () => void
+            handleRetry: (retryInfo: any) => void
+            handleContinue: () => void
+            submitQuestionnaireAnswer: (questionnaireId: string, answers: string) => boolean
+            updateApprovalMode: (mode: string) => void
+            agents: AgentStatus[]
+        }
+        sessionID: string
+        setSessionID: (id: string) => void
+        sessions: SessionInfo[]
+        approvalMode: string
+        handleApprovalModeChange: (mode: string) => void
+        approvalIndex: number
+        pendingApproval: PendingApprovalItem | null
+        approveAll: () => void
+        prevApproval: () => void
+        nextApproval: () => void
+        questionnaireData: { id: string; questions: any[] } | null
+        setQuestionnaireData: (v: { id: string; questions: any[] } | null) => void
+        rosterAgents: AgentStatus[]
+        handleSend: (text?: string) => Promise<void>
+        handleHandoff: (label: string, prompt: string) => void
+        contextValue: AgentUIContextValue
+        mergedLocale: AgentUILocale
+    }
+    export function useAgentPanelState(opts: UseAgentPanelStateOptions): UseAgentPanelStateResult
     export interface ModelOption { label: string; value: string; providerId: string }
     export interface SelectedFile { path: string; startLine?: number; endLine?: number }
-    export interface SelectedImage { url: string; name: string }
+    export interface SelectedImage { url: string; name: string; preview?: string; size?: number }
     export interface ModelState {
         modelOptions: ModelOption[]
         currentModel: string
@@ -137,6 +206,8 @@ declare module 'agent-ui' {
         onToolConfigOpen?: () => void
         selectedFiles?: SelectedFile[]
         selectedImages?: SelectedImage[]
+        /** 单条消息最大可附加图片数（显示「已选 n/max」用；缺省不显示） */
+        maxImages?: number
         onAddImageOpen?: () => void
         onRemoveImage?: (index: number) => void
         onRemoveFile?: (index: number) => void
@@ -181,8 +252,48 @@ declare module 'agent-ui' {
         onRetry: (retryInfo: AgentMessageRetryInfo) => void
         onContinue: () => void
         onToggleReasoning: (msgId: string, collapsed: boolean) => void
+        /** 是否自动展开工具参数（审批进行中传 false：命令详情由审批卡片展示，避免与工具卡片重复） */
+        toolAutoExpand?: boolean
+        /** 子代理交接回调（run_subagent 结果的 handoffs 按钮） */
+        onHandoff?: (label: string, prompt: string) => void
     }
     export const MessageList: React.FC<MessageListProps>
+
+    // ---- 审批卡片 / 问卷 / 审批状态栏 / 会话历史 ----
+    export interface CommandApprovalProps {
+        approvalId: string
+        command: string
+        riskLevel: string
+        /** 来源子代理名（空 = 主会话） */
+        agent?: string
+        onApprove: (approvalId: string) => void
+        onReject: (approvalId: string) => void
+        onTrust?: () => void
+        darkMode?: boolean
+    }
+    export const CommandApproval: React.FC<CommandApprovalProps>
+
+    export interface QuestionStep { id: string; question: string; options?: string[]; default?: string; custom?: boolean; input?: boolean; last?: boolean; multi?: boolean; allowFreeformInput?: boolean }
+    export interface QuestionnaireFormProps { steps: QuestionStep[]; initialAnswers?: Record<string, string>; onSaveProgress?: (answers: Record<string, string>) => void; onComplete: (answers: string) => void; darkMode?: boolean }
+    export const QuestionnaireForm: React.FC<QuestionnaireFormProps>
+
+    export interface ApprovalStatusBarProps { approvalMode: string; onModeChange: (mode: string) => void; tokenUsage: any; currentContextWindow: number; darkMode?: boolean }
+    export const ApprovalStatusBar: React.FC<ApprovalStatusBarProps>
+
+    export interface SessionHistoryProps {
+        sessions: SessionInfo[]
+        darkMode?: boolean
+        onOpen: (sid: string, sessionInfo?: any) => void
+        onRefresh: () => void
+        currentSessionID: string
+        onNewSession: () => void
+        onDeleteSession?: (sessionID: string) => Promise<{ success: boolean; error?: string }>
+        /** 重命名会话 */
+        onRenameSession?: (sessionID: string, title: string) => Promise<{ success: boolean; error?: string }>
+        /** 固定/取消固定会话 */
+        onTogglePin?: (sessionID: string, pinned: boolean) => Promise<{ success: boolean; error?: string }>
+    }
+    export const SessionHistory: React.FC<SessionHistoryProps>
 
     // ---- Token 进度 ----
     export interface TokenUsage {

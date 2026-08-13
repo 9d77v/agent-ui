@@ -23,6 +23,7 @@ export const zhLocale: AgentUILocale = {
         thinkingOff: '停用',
         thinkingDefault: '标准',
         thinkingDeep: '深度',
+        imageCountLabel: '已选 {n}/{max} 张',
         attachedFilesLabel: '附加文件',
     },
     message: {
@@ -75,6 +76,12 @@ export const zhLocale: AgentUILocale = {
         deleteFailed: '删除失败',
         deleteButton: '删除',
         cancelButton: '取消',
+        rename: '重命名',
+        pin: '固定',
+        unpin: '取消固定',
+        renameTitle: '重命名会话',
+        renamePlaceholder: '输入新会话标题',
+        renameSuccess: '已重命名',
     },
     questionnaire: {
         myAnswer: '我的回答：',
