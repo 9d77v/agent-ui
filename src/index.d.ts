@@ -4,7 +4,7 @@ declare module 'agent-ui' {
     export interface ToolCallEntry { callId?: string; name: string; args: string; status: 'executing' | 'done' | 'error'; result?: any }
     export interface AgentMessageRetryInfo { messageId: string; sessionId: string; message: string; model: string; providerId: string; mode: string; thinking: string; done?: boolean }
     export interface AgentMessageFileDiff { filePath: string; original?: any; modified?: any }
-    export interface AgentMessage { id: string; seq?: number; turnId?: string; role: 'user' | 'assistant' | 'tool' | 'model'; content: string; reasoning?: string; loading?: boolean; showReasoning?: boolean; needsContinue?: boolean; toolList?: ToolCallEntry[]; retryInfo?: AgentMessageRetryInfo; fileDiff?: AgentMessageFileDiff }
+    export interface AgentMessage { id: string; seq?: number; turnId?: string; role: 'user' | 'assistant' | 'tool' | 'model'; content: string; reasoning?: string; loading?: boolean; showReasoning?: boolean; needsContinue?: boolean; toolList?: ToolCallEntry[]; retryInfo?: AgentMessageRetryInfo; fileDiff?: AgentMessageFileDiff; timestamp?: string; model?: string }
     export interface AgentHandoff { label?: string; agent?: string; prompt?: string; send?: boolean; show_continue_on?: boolean }
     export interface AgentStatus { agent_id: string; name: string; status: string; session_id: string; parent_id?: string; depth: number; task?: string; summary?: string; files_changed?: string[]; handoffs?: AgentHandoff[]; error?: string; transient?: boolean; created_at?: string; updated_at?: string }
 
@@ -228,6 +228,8 @@ declare module 'agent-ui' {
         onToggleReasoning: (msgId: string, collapsed: boolean) => void
     }
     export const MessageBubble: React.FC<MessageBubbleProps>
+    /** 消息 hover 元数据时间格式化：今天 → HH:mm；非今天 → YYYY-MM-DD HH:mm（本地时区） */
+    export function formatMessageTime(iso: string): string
 
     // ---- 多 Agent 编排（只读展示，子代理自动化执行） ----
     export interface AgentRosterProps { agents: AgentStatus[]; darkMode?: boolean; onSelect?: (agent: AgentStatus) => void }
@@ -256,6 +258,10 @@ declare module 'agent-ui' {
         toolAutoExpand?: boolean
         /** 子代理交接回调（run_subagent 结果的 handoffs 按钮） */
         onHandoff?: (label: string, prompt: string) => void
+        /** 外部滚动定位（用户消息上/下箭头导航）：非空时滚动到对应消息并暂停自动跟随 */
+        scrollToMsgId?: string
+        /** 滚动时回调当前视口所在的用户消息 id（无用户消息时 null）；用于外部计数跟随视口 */
+        onUserMsgScrollChange?: (msgId: string | null) => void
     }
     export const MessageList: React.FC<MessageListProps>
 

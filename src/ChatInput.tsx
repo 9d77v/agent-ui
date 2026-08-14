@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Input, Button, Select, Tooltip, Dropdown, Typography, Space, Modal, theme } from 'antd'
-import { CheckOutlined, SettingOutlined, FileAddOutlined, PictureOutlined, PlusOutlined, CloseOutlined, ToolOutlined, PauseCircleOutlined, EnterOutlined, ThunderboltOutlined } from '@ant-design/icons'
+import { CheckOutlined, SettingOutlined, FileAddOutlined, PictureOutlined, PlusOutlined, CloseOutlined, ToolOutlined, ArrowUpOutlined, ThunderboltOutlined } from '@ant-design/icons'
 import { useAgentLocale } from './locale/index'
 import type { ModelOption, SelectedFile, SelectedImage } from './types'
 
@@ -36,6 +36,8 @@ export default function ChatInput(p: ChatInputProps) {
     // 非受控模式：文本由组件内部管理（打字只重渲染 ChatInput，避免父组件整树重渲染卡顿）；
     // 兼容受控模式：外部传入 inputText 时同步。
     const [text, setText] = useState(inputText || '')
+    // 输入聚焦状态：聚焦时整个 ChatInput 显示蓝色边框（VSCode 风格，而非仅 textarea）
+    const [focused, setFocused] = useState(false)
     // 图片大图预览（点击缩略图打开 Modal；关闭按钮位于图片右上角）
     const [previewImg, setPreviewImg] = useState<SelectedImage | null>(null)
     useEffect(() => {
@@ -50,6 +52,8 @@ export default function ChatInput(p: ChatInputProps) {
         onSend(text)
         setText('')
     }
+    // 是否有可发送内容（文本非空，或已附加文件/图片）
+    const canSend = !!text.trim() || !!p.selectedImages?.length || !!p.selectedFiles?.length
     const thinkingItems = [
         { key: 'off', label: loc.chatInput.thinkingOff },
         { key: 'default', label: loc.chatInput.thinkingDefault },
@@ -57,7 +61,16 @@ export default function ChatInput(p: ChatInputProps) {
     ]
     const formatLabel = loc.formatModelLabel || ((v: string) => v.includes('||') ? v.split('||')[1] : v)
     return (
-        <div style={{ borderTop: `1px solid ${token.colorBorderSecondary}` }}>
+        // 整体为圆角边框盒子（VSCode 风格）：聚焦时整个 ChatInput 范围显示主题色边框
+        <div
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            style={{
+                border: `1px solid ${focused ? token.colorPrimary : token.colorBorderSecondary}`,
+                borderRadius: 8,
+                transition: 'border-color 0.2s ease',
+            }}
+        >
             {p.selectedFiles && p.selectedFiles.length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, padding: '4px 8px 0' }}>
                     {p.selectedFiles.map((f, i) => (
@@ -111,11 +124,7 @@ export default function ChatInput(p: ChatInputProps) {
                         }
                     }}
                     placeholder={loc.chatInput.placeholder} autoSize={{ minRows: 2, maxRows: 6 }} disabled={sending}
-                    variant="borderless" style={{ flex: 1, background: 'transparent', padding: '8px 0 8px 10px', resize: 'none', fontSize: 13 }} />
-                <div style={{ padding: '4px 6px 4px 0', flexShrink: 0 }}>
-                    {sending ? <Tooltip title={loc.chatInput.stopTooltip}><Button shape="circle" size="small" danger icon={<PauseCircleOutlined style={{ fontSize: 16 }} />} onClick={onCancel} /></Tooltip>
-                        : <Tooltip title={loc.chatInput.sendTooltip}><Button type="primary" shape="circle" size="small" icon={<EnterOutlined style={{ fontSize: 16 }} />} onClick={send} disabled={!text.trim() && !(p.selectedImages && p.selectedImages.length > 0) && !(p.selectedFiles && p.selectedFiles.length > 0)} /></Tooltip>}
-                </div>
+                    variant="borderless" style={{ flex: 1, background: 'transparent', padding: '8px 0 8px 10px', resize: 'none', fontSize: 13, outline: 'none' }} />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', padding: '2px 6px', borderTop: `1px solid ${token.colorBorderSecondary}`, gap: 2 }}>
                 {/* 十字添加按钮：hover 展开「添加文件 / 添加图片」两个选项（点击流程与原来一致） */}
@@ -150,7 +159,7 @@ export default function ChatInput(p: ChatInputProps) {
                     {p.onToolConfigOpen && <Tooltip title={loc.chatInput.toolConfigTooltip}><Button type="text" size="small" icon={<ToolOutlined style={{ fontSize: 14 }} />} onClick={p.onToolConfigOpen} /></Tooltip>}
                 </>}
                 <div style={{ flex: 1 }} />
-                {/* 发送中（输入框禁用 + 停止按钮可见）：chip 置灰且不挂 Dropdown，hover 不显示快捷文本 */}
+                {/* 发送中：快捷文本 chip 置灰且不挂 Dropdown，hover 不显示快捷文本 */}
                 {p.quickTexts && p.quickTexts.length > 0 && (
                     sending ? (
                         <Button type="text" size="small" disabled icon={<ThunderboltOutlined />} />
@@ -159,6 +168,17 @@ export default function ChatInput(p: ChatInputProps) {
                             <Button type="text" size="small" icon={<ThunderboltOutlined />} />
                         </Dropdown>
                     )
+                )}
+                {/* 发送/停止按钮（快捷文本右侧）：向上箭头发送，运行中变为停止；风格与工具栏文字按钮一致 */}
+                {sending ? (
+                    <Tooltip title={loc.chatInput.stopTooltip}>
+                        {/* VSCode stop 图标：实心方块（antd 无该图标，用 span 绘制） */}
+                        <Button type="text" size="small" icon={<span style={{ display: 'inline-block', width: 10, height: 10, background: token.colorError, borderRadius: 2 }} />} onClick={onCancel} style={{ color: token.colorError }} />
+                    </Tooltip>
+                ) : (
+                    <Tooltip title={loc.chatInput.sendTooltip}>
+                        <Button type="text" size="small" icon={<ArrowUpOutlined style={{ fontSize: 16 }} />} onClick={send} disabled={!canSend} style={canSend ? { color: token.colorPrimary } : undefined} />
+                    </Tooltip>
                 )}
             </div>
 

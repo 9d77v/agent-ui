@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Typography, Tag, Space, Tabs, theme } from 'antd'
-import { RobotOutlined } from '@ant-design/icons'
+import { Typography, Tag, Space, theme } from 'antd'
 import type { AgentStatus } from './types'
 
 const { Text } = Typography
@@ -85,18 +84,16 @@ export default function AgentRoster({ agents, darkMode, onSelect }: {
         }
     }, [])
 
-    const renderItems = (items: AgentStatus[]) => items.length === 0
+    const renderList = (items: AgentStatus[]) => items.length === 0
         ? <Text type="secondary" style={{ fontSize: 11, paddingLeft: 6 }}>无</Text>
-        : (
-            <div style={{ maxHeight: 260, overflowY: 'auto' }}>
-                {items.map(a => {
+        : items.map(a => {
                     const st = statusMeta[a.status] || statusMeta.idle
                     const indent = (a.depth || 0) * 14
                     const flashing = flashIDs.has(a.agent_id)
                     return (
                         <div key={a.agent_id} onClick={() => onSelect?.(a)} style={{
                             display: 'flex', alignItems: 'center', gap: 6, padding: '3px 6px',
-                            borderRadius: 4, background: darkMode ? '#1e1e1e' : '#fafafa',
+                            borderRadius: 4, background: darkMode ? 'rgba(30,30,30,0.45)' : 'rgba(255,255,255,0.45)',
                             border: `1px solid ${token.colorBorderSecondary}`, marginLeft: indent, marginBottom: 4,
                             cursor: onSelect ? 'pointer' : 'default',
                             ...(flashing ? { animation: 'agentRowFlash 0.6s ease-in-out 3' } : {}),
@@ -118,28 +115,34 @@ export default function AgentRoster({ agents, darkMode, onSelect }: {
                             </div>
                         </div>
                     )
-                })}
-            </div>
-        )
+                })
 
     return (
         <>
             <style>{flashKeyframes}</style>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '2px 0' }}>
-                    <RobotOutlined style={{ fontSize: 12, color: token.colorPrimary }} />
-                    <Text strong style={{ fontSize: 12, color: token.colorText }}>子代理</Text>
-                    {total > 0 && <Tag style={{ fontSize: 10, lineHeight: '14px', margin: 0 }}>{total}</Tag>}
-                </div>
-                {total === 0 && <Text type="secondary" style={{ fontSize: 11, paddingLeft: 14 }}>无运行中的子代理</Text>}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minHeight: 0 }}>
+                {total === 0 && <Text type="secondary" style={{ fontSize: 11, paddingLeft: 0 }}>无运行中的子代理</Text>}
                 {total > 0 && (
-                    <Tabs size="small" activeKey={tab} onChange={setTab}
-                        items={[
-                            { key: 'resident', label: `常驻 ${resident.length}`, children: renderItems(resident) },
-                            { key: 'transient', label: `一次性 ${transient.length}`, children: renderItems(transient) },
-                        ]}
-                        style={{ fontSize: 11 }}
-                    />
+                    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+                        {/* tab 按钮（自实现：不依赖 antd Tabs 内部类名，列表容器可可靠 flex 滚动） */}
+                        <div style={{ display: 'flex', gap: 8, paddingBottom: 4, flexShrink: 0 }}>
+                            {(['resident', 'transient'] as const).map(k => (
+                                <button key={k} onClick={() => setTab(k)}
+                                    style={{
+                                        border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+                                        fontSize: 11, padding: '2px 8px', borderRadius: 4,
+                                        color: darkMode ? '#d4d4d4' : '#595959',
+                                        background: tab === k ? (darkMode ? '#2a2d2e' : '#e8e8e8') : 'transparent',
+                                    }}>
+                                    {k === 'resident' ? `常驻 ${resident.length}` : `一次性 ${transient.length}`}
+                                </button>
+                            ))}
+                        </div>
+                        {/* 列表容器：flex:1 + overflowY auto（可靠滚动） */}
+                        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+                            {tab === 'resident' ? renderList(resident) : renderList(transient)}
+                        </div>
+                    </div>
                 )}
             </div>
         </>

@@ -24,6 +24,10 @@ export interface AgentMessage {
         model: string; providerId: string; mode: string; thinking: string
         done?: boolean
     }
+    /** 消息时间（ISO 字符串；流式由 message_start 本地填充，历史由 loadHistory 映射 created_at） */
+    timestamp?: string
+    /** 消息使用的模型名（流式取当前模型，历史解析自 custom_metadata.openai_model） */
+    model?: string
 }
 
 export interface MessageTree {

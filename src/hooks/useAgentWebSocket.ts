@@ -60,13 +60,23 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
     const cancelCleanupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     useEffect(() => { pendingApprovalsRef.current = pendingApprovals.length }, [pendingApprovals])
     const [questionnaireData, setQuestionnaireData] = useState<{ id: string; questions: any[] } | null>(null)
-    const [agents, setAgents] = useState<AgentStatus[]>([])    
+    const [agents, setAgents] = useState<AgentStatus[]>([])
+
+    // 流式增量节流缓冲：content_delta/reasoning_delta/tool_call_delta 先攒批，
+    // ~100ms 定时 flush 一次合并到 messageTree（降低流式期间 React 重渲染与 markdown 重解析频率）。
+    // toolArgs 按 call_id 累积；tool_call_end 的 tool_args（完整最终参数）会取代对应累积。
+    const deltaBufferRef = useRef<{ content: string; reasoning: string; toolArgs: Record<string, string> }>({ content: '', reasoning: '', toolArgs: {} })
+    const deltaFlushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)    
 
     const { messageTree, sessionID, currentModel, activeProviderId, thinking, approvalMode, includeProjectDocs, getWebSocketURL } = input
 
     // 会话 id 的 ref：handleWsMessage 闭包需访问最新值（agent_status 按当前会话过滤）
     const sessionIDRef = useRef(sessionID)
     useEffect(() => { sessionIDRef.current = sessionID }, [sessionID])
+
+    // currentModel 的 ref 镜像：handleWsMessage 闭包需访问最新值（message_start 填充消息 model 字段）
+    const currentModelRef = useRef(currentModel)
+    useEffect(() => { currentModelRef.current = currentModel }, [currentModel])
 
     // 同步 streamingMsgId 的 ref 与 state（state 供渲染响应式读取）
     const setStreaming = useCallback((id: string | null) => {
@@ -75,6 +85,8 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
     }, [])
 
     const cleanup = useCallback(() => {
+        if (deltaFlushTimerRef.current) { clearTimeout(deltaFlushTimerRef.current); deltaFlushTimerRef.current = null }
+        deltaBufferRef.current = { content: '', reasoning: '', toolArgs: {} }
         if (cancelCleanupTimerRef.current) { clearTimeout(cancelCleanupTimerRef.current); cancelCleanupTimerRef.current = null }
         if (pingRef.current) clearInterval(pingRef.current)
         setSending(false)
@@ -95,6 +107,32 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
         }, delayMs)
     }, [cleanup])
 
+    // 把缓冲的流式增量一次性合并到当前流式消息（content/reasoning/tool args 各自拼接一次）
+    const flushDeltas = useCallback(() => {
+        if (deltaFlushTimerRef.current) { clearTimeout(deltaFlushTimerRef.current); deltaFlushTimerRef.current = null }
+        const buf = deltaBufferRef.current
+        if (!buf.content && !buf.reasoning && Object.keys(buf.toolArgs).length === 0) return
+        const curId = streamingMsgIdRef.current
+        if (curId) {
+            messageTree.updateMessage(curId, msg => {
+                let next = msg
+                if (buf.content) next = { ...next, content: next.content + buf.content }
+                if (buf.reasoning) next = { ...next, reasoning: (next.reasoning || '') + buf.reasoning }
+                if (Object.keys(buf.toolArgs).length > 0) {
+                    next = { ...next, toolList: (next.toolList || []).map(t => buf.toolArgs[t.callId || ''] ? { ...t, args: t.args + buf.toolArgs[t.callId || ''] } : t) }
+                }
+                return next
+            })
+        }
+        deltaBufferRef.current = { content: '', reasoning: '', toolArgs: {} }
+    }, [messageTree])
+
+    // 节流（leading edge）：100ms 窗口内的增量合并为一次 flush；已排期则不重置计时器
+    const scheduleDeltaFlush = useCallback(() => {
+        if (deltaFlushTimerRef.current) return
+        deltaFlushTimerRef.current = setTimeout(() => flushDeltas(), 100)
+    }, [flushDeltas])
+
     const handleWsMessage = useCallback((data: any) => {
         const { type, stream_id, msg_id, call_id, delta, tool_name, tool_args, file_path,
             original, modified, backup_path, error, code, risk_level, approval_id, command,
@@ -113,6 +151,7 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
                 break
             case 'message_end': {
                 if (!isCurrentStream) break
+                flushDeltas()
                 const curId = streamingMsgIdRef.current
                 if (curId) messageTree.updateMessage(curId, msg => ({ ...msg, loading: false, showReasoning: false }))
                 break
@@ -121,20 +160,23 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
                 if (!isCurrentStream) break
                 const role = data.role || 'model'
                 if (role === 'tool') break
-                messageTree.addMessage({ id: msg_id, seq: data.seq, turnId: data.turn_id, role, content: '', reasoning: '', loading: true, showReasoning: true, toolList: [] })
+                // 模型名取 currentModel（providerId||model）的 model 段，与历史消息 custom_metadata.openai_model 保持一致
+                const cm = currentModelRef.current
+                const mn = cm.includes('||') ? cm.split('||')[1] : cm
+                messageTree.addMessage({ id: msg_id, seq: data.seq, turnId: data.turn_id, role, content: '', reasoning: '', loading: true, showReasoning: true, toolList: [], timestamp: new Date().toISOString(), model: mn })
                 setStreaming(msg_id)
                 break
             }
             case 'content_delta': {
                 if (!isCurrentStream) break
-                const curId = streamingMsgIdRef.current
-                if (curId) messageTree.updateMessage(curId, msg => ({ ...msg, content: msg.content + delta }))
+                deltaBufferRef.current.content += delta || ''
+                scheduleDeltaFlush()
                 break
             }
             case 'reasoning_delta': {
                 if (!isCurrentStream) break
-                const curId = streamingMsgIdRef.current
-                if (curId) messageTree.updateMessage(curId, msg => ({ ...msg, reasoning: (msg.reasoning || '') + delta }))
+                deltaBufferRef.current.reasoning += delta || ''
+                scheduleDeltaFlush()
                 break
             }
             case 'tool_call_start': {
@@ -148,13 +190,16 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
                 if (!isCurrentStream) break
                 const curId = streamingMsgIdRef.current
                 if (!curId) break
-                messageTree.updateMessage(curId, msg => ({ ...msg, toolList: (msg.toolList || []).map(t => t.callId === call_id ? { ...t, args: t.args + (delta || '') } : t) }))
+                deltaBufferRef.current.toolArgs[call_id] = (deltaBufferRef.current.toolArgs[call_id] || '') + (delta || '')
+                scheduleDeltaFlush()
                 break
             }
             case 'tool_call_end': {
                 if (!isCurrentStream) break
                 const curId = streamingMsgIdRef.current
                 if (!curId) break
+                // tool_args 是完整最终参数，取代该 call 已缓冲的增量（避免覆盖后残留拼接）
+                delete deltaBufferRef.current.toolArgs[call_id]
                 messageTree.updateMessage(curId, msg => ({ ...msg, toolList: (msg.toolList || []).map(t => t.callId === call_id ? { ...t, args: tool_args } : t) }))
                 break
             }
@@ -208,6 +253,7 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
                 break
             case 'cancelled':
                 // 后端确认已停止：把当前流消息的执行中工具标为已停止（幂等，与 handleCancel 本地更新互补）
+                flushDeltas()
                 if (streamingMsgIdRef.current) {
                     messageTree.updateMessage(streamingMsgIdRef.current, msg => ({
                         ...msg, loading: false,
@@ -222,6 +268,7 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
             case 'turn_complete':
                 // 非当前流忽略：旧流/残留连接的回合完成消息不得误杀当前审批（清卡片、关 WS）
                 if (!isCurrentStream) break
+                flushDeltas()
                 if (streamingMsgIdRef.current) messageTree.updateMessage(streamingMsgIdRef.current, msg => ({ ...msg, loading: false, showReasoning: false }))
                 if (data.session_id) window.dispatchEvent(new CustomEvent('session-created', { detail: data.session_id }))
                 // ADK 原生 HITL：本轮因审批已暂停。有待审时保活 WS、保留 streamingMsgIdRef 与审批卡片，
@@ -233,6 +280,7 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
                 cleanup()
                 break
             case 'error': {
+                flushDeltas()
                 const curId = streamingMsgIdRef.current || msg_id
                 if (data.code === 'max_iterations') {
                     // 达到最大迭代次数：追加温和提示并保留"继续执行"入口，不当作致命错误
@@ -269,7 +317,7 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
                 window.dispatchEvent(new CustomEvent('agent-terminal-data', { detail: { text, is_stderr } }))
                 break
         }
-    }, [messageTree, setStreaming, cleanup, scheduleCancelCleanup])
+    }, [messageTree, setStreaming, cleanup, scheduleCancelCleanup, flushDeltas, scheduleDeltaFlush])
 
     useEffect(() => () => cleanup(), [cleanup])
 
@@ -343,7 +391,7 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
             return
         }
         const userMsgId = 'user_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)
-        messageTree.addMessage({ id: userMsgId, role: 'user', content: text || (images && images.length > 0 ? '🖼 [图片]' : ''), loading: false })
+        messageTree.addMessage({ id: userMsgId, role: 'user', content: text || (images && images.length > 0 ? '🖼 [图片]' : ''), loading: false, timestamp: new Date().toISOString() })
 
         const pid = activeProviderId || (currentModel.includes('||') ? currentModel.split('||')[0] : '')
         const mn = currentModel.includes('||') ? currentModel.split('||')[1] : currentModel

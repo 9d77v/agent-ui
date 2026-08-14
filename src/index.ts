@@ -22,7 +22,7 @@ export { AgentModal, ToolConfigModal, FilePickerModal } from './modal'
 export type { AgentModalProps, ToolConfigModalProps, FilePickerModalProps, ToolTreeNode } from './modal'
 
 export { default as MessageList } from './MessageList'
-export { default as MessageBubble } from './MessageBubble'
+export { default as MessageBubble, formatMessageTime } from './MessageBubble'
 export { default as ChatInput } from './ChatInput'
 export type { ChatInputProps } from './ChatInput'
 

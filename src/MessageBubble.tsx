@@ -8,6 +8,19 @@ import { useAgentLocale } from './locale/index'
 
 const { Text } = Typography
 
+/** hover 元数据时间格式化：今天 → HH:mm（24h）；非今天 → YYYY-MM-DD HH:mm（本地时区）。
+ * 非法时间戳原样返回（不渲染异常内容）。 */
+export function formatMessageTime(iso: string): string {
+    const d = new Date(iso)
+    if (isNaN(d.getTime())) return iso
+    const now = new Date()
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const hm = `${pad(d.getHours())}:${pad(d.getMinutes())}`
+    const isToday = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate()
+    if (isToday) return hm
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${hm}`
+}
+
 export interface MessageBubbleProps {
     msg: AgentMessage; darkMode?: boolean; streamingMsgId?: string | null
     onOpenFile: (path: string) => void
@@ -30,7 +43,9 @@ export default memo(function MessageBubble({ msg, darkMode, streamingMsgId, onOp
     const isOutputting = isStreaming && !!msg.loading
     const reasoningRef = useRef<HTMLDivElement>(null)
 
-    // 打字机效果：流式期间逐段揭示思考与正文，避免内容整块蹍出
+    // 打字机效果：流式期间逐段揭示思考与正文，避免内容整块蹍出。
+    // 降频：rAF(~16ms) → ~100ms 定时器（与 WS 增量节流同频），步长稍加大保持逐段揭示观感，
+    // 避免流式期间每帧 ReactMarkdown 全量重解析（长内容 O(n)/帧 → ~10fps）。
     const [revealedReasoning, setRevealedReasoning] = useState(msg.reasoning?.length ?? 0)
     const [revealedContent, setRevealedContent] = useState(msg.content.length)
     useEffect(() => {
@@ -39,22 +54,25 @@ export default memo(function MessageBubble({ msg, darkMode, streamingMsgId, onOp
             setRevealedContent(msg.content.length)
             return
         }
-        let raf = 0
+        let timer = 0
         const tick = () => {
+            let done = true
             setRevealedReasoning(prev => {
                 const target = msg.reasoning?.length ?? 0
                 if (prev >= target) return prev
-                return Math.min(target, prev + Math.max(1, Math.round((target - prev) / 20)))
+                done = false
+                return Math.min(target, prev + Math.max(1, Math.round((target - prev) / 10)))
             })
             setRevealedContent(prev => {
                 const target = msg.content.length
                 if (prev >= target) return prev
-                return Math.min(target, prev + Math.max(1, Math.round((target - prev) / 20)))
+                done = false
+                return Math.min(target, prev + Math.max(1, Math.round((target - prev) / 10)))
             })
-            raf = requestAnimationFrame(tick)
+            if (!done) timer = window.setTimeout(tick, 100)
         }
-        raf = requestAnimationFrame(tick)
-        return () => cancelAnimationFrame(raf)
+        timer = window.setTimeout(tick, 100)
+        return () => clearTimeout(timer)
     }, [isOutputting, msg.reasoning, msg.content])
 
     const shownReasoning = isOutputting ? (msg.reasoning || '').slice(0, revealedReasoning) : (msg.reasoning || '')
@@ -67,9 +85,19 @@ export default memo(function MessageBubble({ msg, darkMode, streamingMsgId, onOp
         if (isOutputting && msg.showReasoning && reasoningRef.current) reasoningRef.current.scrollTop = reasoningRef.current.scrollHeight
     }, [revealedReasoning, msg.showReasoning, isOutputting])
     if (msg.role === 'user') {
-        return <div style={{ maxWidth: '80%', padding: '8px 14px', borderRadius: 12, background: token.colorPrimaryBg, color: token.colorText, fontSize: 13, lineHeight: 1.6 }}>
-            <MarkdownRenderer content={msg.content} />
-        </div>
+        return (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', maxWidth: '80%' }}>
+                <div style={{ padding: '8px 14px', borderRadius: 12, background: token.colorPrimaryBg, color: token.colorText, fontSize: 13, lineHeight: 1.6 }}>
+                    <MarkdownRenderer content={msg.content} />
+                </div>
+                {/* hover 显隐小字（文档流 + .agent-msg-action-btn CSS 显隐，恢复可显示版本）：用户消息仅显示时间 */}
+                {msg.timestamp && (
+                    <div className="agent-msg-action-btn" style={{ marginTop: 2, fontSize: 11, color: token.colorTextTertiary }}>
+                        {formatMessageTime(msg.timestamp)}
+                    </div>
+                )}
+            </div>
+        )
     }
         if (msg.role === 'tool') {
         const output = msg.content || ''
@@ -81,6 +109,11 @@ export default memo(function MessageBubble({ msg, darkMode, streamingMsgId, onOp
     }
 
     const tools: ToolViewItem[] = (msg.toolList || []).map(t => ({ name: t.name || '', args: t.args || '', result: t.result, status: (t.status || 'done') as ToolViewItem['status'] }))
+    // 完成且无任何正文的 assistant 消息（content/reasoning/tools 全空、非流式、无操作按钮）→ 不渲染，
+    // 避免出现「无正文但 hover 有元数据」的幽灵消息
+    if (!msg.loading && !msg.content?.trim() && !msg.reasoning && tools.length === 0 && !msg.needsContinue && !msg.retryInfo) {
+        return null
+    }
     return <div style={{ width: '100%' }}>
         {msg.reasoning && (isOutputting && msg.showReasoning ? (
             // 思考仍在输出：强制展开、不可折叠，内容跟随滚动到底部
@@ -111,5 +144,12 @@ export default memo(function MessageBubble({ msg, darkMode, streamingMsgId, onOp
             </div>
         )}
         {msg.retryInfo && !msg.retryInfo.done && <div style={{ marginTop: 8 }}><Button size="small" type="primary" danger onClick={() => onRetry(msg.retryInfo!)}>{loc.message.retryButton}</Button></div>}
+        {/* hover 显隐小字（文档流 + .agent-msg-action-btn CSS 显隐，恢复可显示版本）：消息时间 + 模型（无数据不渲染） */}
+        {(msg.timestamp || msg.model) && (
+            <div className="agent-msg-action-btn" style={{ marginTop: 2, fontSize: 11, color: token.colorTextTertiary }}>
+                {msg.timestamp && <span>{formatMessageTime(msg.timestamp)}</span>}
+                {msg.model && <span>{msg.timestamp ? ' · ' : ''}{msg.model}</span>}
+            </div>
+        )}
     </div>
 })
