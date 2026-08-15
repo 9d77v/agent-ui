@@ -79,7 +79,6 @@ export default function TokenProgress({ tokenUsage, currentContextWindow, darkMo
             <svg width={22} height={22} viewBox="0 0 36 36">
                 <circle cx={18} cy={18} r={radius} fill="none" stroke={token.colorFillSecondary} strokeWidth={3} />
                 <circle cx={18} cy={18} r={radius} fill="none" stroke={strokeColor} strokeWidth={3} strokeDasharray={circumference} strokeDashoffset={offset} transform="rotate(-90 18 18)" strokeLinecap="round" />
-                <text x={18} y={20} textAnchor="middle" fontSize={7} fill="#888">{pct}%</text>
             </svg>
         </div>
     </Tooltip>

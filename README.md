@@ -13,7 +13,7 @@
 | `locale`           | 国际化文本                               |
 | `toolNameLabels`   | 工具显示名映射                           |
 | `toolDisplayNames` | 工具显示名映射（时间线/卡片）            |
-| `toolConfig`       | 工具配置数据                             |
+| `toolConfig`       | 工具展示数据（静态工具树，只读）       |
 | `filePicker`       | 文件选择数据                             |
 | `getWebSocketURL`  | WebSocket 连接地址                       |
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Input, Typography, theme } from 'antd'
 import { SearchOutlined, CheckOutlined } from '@ant-design/icons'
 import AgentModal from './AgentModal'
@@ -17,18 +17,29 @@ export interface FilePickerModalProps {
     darkMode?: boolean
 }
 
+/** 搜索结果渲染上限：搜索返回可能含工作区 + 关联文件夹（如 go mod cache）的数万文件，
+ * 全量渲染会卡死界面（无响应）。截断到上限并排序展示，足够选择定位文件。 */
+const MAX_RESULTS = 200
+
 export default function FilePickerModal({ open, onClose, onSearch, selectedFiles = [], onSelect, darkMode }: FilePickerModalProps) {
     const { token } = theme.useToken()
     const [query, setQuery] = useState('')
     const [files, setFiles] = useState<string[]>([])
     const [caseSensitive, setCaseSensitive] = useState(false)
+    // 防抖 timer：onChange 每次按键都触发，直接同步全量搜索大工作区会卡顿/无响应。
+    // 输入停止 250ms 后才真正发起搜索；结果截断到 MAX_RESULTS。
+    const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    useEffect(() => () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current) }, [])
 
-    const loadFiles = useCallback(async (q?: string) => {
+    const loadFiles = useCallback((q?: string) => {
         if (!q) { setFiles([]); return }
-        try {
-            const result = await onSearch(q)
-            setFiles((result || []).sort())
-        } catch { setFiles([]) }
+        if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
+        searchTimerRef.current = setTimeout(async () => {
+            try {
+                const result = await onSearch(q)
+                setFiles((result || []).slice(0, MAX_RESULTS).sort())
+            } catch { setFiles([]) }
+        }, 250)
     }, [onSearch])
 
     useEffect(() => { if (open) { setQuery(''); setFiles([]) } }, [open])

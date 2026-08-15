@@ -48,7 +48,7 @@ export interface WsOutput {
     handleCancel: () => void
     handleRetry: (retryInfo: any) => void
     handleContinue: () => void
-    /** 提交问卷回答：答案作为 askQuestions 工具结果（tool call result）回传 LLM，非新用户消息 */
+    /** 提交问卷回答：答案作为 ask_user 工具结果（tool call result）回传 LLM，非新用户消息 */
     submitQuestionnaireAnswer: (questionnaireId: string, answers: string) => boolean
     /** 运行中切换审批模式：通知后端即时生效（当前编排后续工具判定立即读取） */
     updateApprovalMode: (mode: string) => void
@@ -58,6 +58,11 @@ export interface WsOutput {
 
 export function useAgentWebSocket(input: WsInput): WsOutput {
     const wsRef = useRef<WebSocket | null>(null)
+    // 组件卸载守卫：卸载后（如切换工作区 key 重挂载）旧 WS 连接残留的 onmessage 回调
+    // 不再 dispatch 任何 window 事件（session-created/todo-update/agent-done/...），
+    // 否则旧工作区编排的迟到广播会串到新挂载的组件，造成跨工作区串会话/渲染异常。
+    const mountedRef = useRef(true)
+    useEffect(() => () => { mountedRef.current = false }, [])
     const pingRef = useRef<ReturnType<typeof setInterval> | null>(null)
     const streamIDRef = useRef<string | null>(null)
     const streamingMsgIdRef = useRef<string | null>(null)
@@ -148,6 +153,9 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
     }, [flushDeltas])
 
     const handleWsMessage = useCallback((data: any) => {
+        // 卸载守卫：组件卸载后（key 重挂载/切换工作区）残留消息一律丢弃，
+        // 防止旧工作区编排广播串入新组件（dispatch window 事件会污染新会话状态）
+        if (!mountedRef.current) return
         const { type, stream_id, msg_id, call_id, delta, tool_name, tool_args, file_path,
             original, modified, backup_path, error, code, risk_level, approval_id, command,
             questionnaire_id, content, text, is_stderr } = data
@@ -155,6 +163,25 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
         // 流消息归属校验：旧会话/旧流的流式消息（stream_id 与当前活动流不一致）直接忽略，
         // 防止切换会话后旧流消息串入当前界面（消息树是组件级共享的）
         const isCurrentStream = !stream_id || !streamIDRef.current || stream_id === streamIDRef.current
+
+        // 子代理流式消息（agent_id 标识，与主消息同一条 WS 流推送）：消息增量/工具调用/token 用量/
+        // 回合完成/错误不进入主消息树——dispatch agent-stream 事件供宿主按 agent_id 实时展示子代理消息流
+        // （前端 AgentTranscript 弹窗流式渲染，不再仅靠 2s 轮询）；token_usage 额外更新 roster 行
+        // last_token_usage（子代理 token 实时可见，不再等编排结束）。agent_done/agent_status 走下方原逻辑。
+        if (data.agent_id && (
+            type === 'message_start' || type === 'content_delta' || type === 'reasoning_delta' || type === 'message_end' ||
+            type === 'tool_call_start' || type === 'tool_call_delta' || type === 'tool_call_end' || type === 'tool_executing' ||
+            type === 'tool_result' || type === 'token_usage' || type === 'turn_complete' || type === 'error'
+        )) {
+            if (type === 'token_usage') {
+                try {
+                    const usage = JSON.parse(data.tool_args || '{}')
+                    setAgents(prev => prev.map(a => a.agent_id === data.agent_id ? { ...a, last_token_usage: JSON.stringify(usage) } : a))
+                } catch { /* 忽略解析失败 */ }
+            }
+            window.dispatchEvent(new CustomEvent('agent-stream', { detail: data }))
+            return
+        }
 
         switch (type) {
             case 'started':

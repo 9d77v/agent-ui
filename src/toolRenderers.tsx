@@ -94,7 +94,7 @@ export function toolColor(name: string, token: ThemeToken): string {
         case 'get_errors':
         case 'run_skill':
         case 'agent_suspend':
-        case 'askQuestions':
+        case 'ask_user':
         case 'auto_verify':
         case 'check_approval':
         case 'adk_request_confirmation':
@@ -132,7 +132,7 @@ export function toolIcon(name: string, token: ThemeToken): ReactNode {
         case 'run_skill': return <ThunderboltOutlined style={style} />
         case 'web_fetch': return <LinkOutlined style={style} />
         case 'memory': return <DatabaseOutlined style={style} />
-        case 'askQuestions': return <QuestionCircleOutlined style={style} />
+        case 'ask_user': return <QuestionCircleOutlined style={style} />
         case 'newWorkspace': return <DeploymentUnitOutlined style={style} />
         case 'resolveMemoryFileUri': return <FileSyncOutlined style={style} />
         case 'load_artifacts': return <FileImageOutlined style={style} />
@@ -357,7 +357,7 @@ export function toolSummary(tool: ToolViewItem): string {
             if (action === 'view') return `查看 ${path}`
             return `${action} ${path}`.trim()
         }
-        case 'askQuestions': {
+        case 'ask_user': {
             const n = Array.isArray(r?.data?.questions) ? r.data.questions.length : (Array.isArray(args?.questions) ? args.questions.length : 0)
             return `等待用户回答 ${n} 个问题`
         }
@@ -955,7 +955,7 @@ export function renderToolBody(tool: ToolViewItem, ctx: ToolRenderContext): Reac
         case 'run_skill': return renderRunSkill(tool, ctx)
         case 'web_fetch': return renderWebFetch(tool, ctx)
         case 'memory': return renderMemory(tool, ctx)
-        case 'askQuestions': return renderAskQuestions(tool, ctx)
+        case 'ask_user': return renderAskQuestions(tool, ctx)
         case 'newWorkspace': return renderOutputFolded(tool, ctx)
         case 'resolveMemoryFileUri': return renderResolveMemoryFileUri(tool, ctx)
         case 'load_artifacts': return renderLoadArtifacts(tool, ctx)

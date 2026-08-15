@@ -1,134 +1,81 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
-import { Tree, Typography } from 'antd'
+import type { ReactNode } from 'react'
+import { Typography, theme } from 'antd'
 import { SettingOutlined } from '@ant-design/icons'
 import AgentModal from './AgentModal'
 import type { ToolTreeNode } from './types'
+import { toolIcon } from '../toolRenderers'
 
 const { Text } = Typography
 
 export interface ToolConfigModalProps {
     open: boolean
     onClose: () => void
+    /** 静态工具树（分类 + 名称 + 描述；只读展示，全量注入） */
     toolTree: ToolTreeNode[]
-    /** 工具启用状态（key → enabled） */
-    toolEnabled?: Record<string, boolean>
-    /** 工具启用状态变化时触发，keys 为当前所有已启用的 key 列表 */
-    onChange?: (enabledKeys: string[]) => void
     darkMode?: boolean
 }
 
-/** 将工具树转换为 Ant Design TreeData 格式 */
-function toAntdTreeData(nodes: ToolTreeNode[]): any[] {
-    return nodes.map(n => ({
-        title: n.label,
-        key: n.key,
-        children: n.children ? toAntdTreeData(n.children) : undefined,
-    }))
-}
-
-/** 递归收集指定深度内的所有节点 key */
-function collectKeysUpToDepth(nodes: ToolTreeNode[], maxDepth: number, currentDepth = 0): string[] {
-    if (currentDepth > maxDepth) return []
-    const keys: string[] = []
-    for (const n of nodes) {
-        keys.push(n.key)
-        if (n.children && n.children.length > 0 && currentDepth < maxDepth) {
-            keys.push(...collectKeysUpToDepth(n.children, maxDepth, currentDepth + 1))
-        }
-    }
-    return keys
-}
-
-/** 递归收集所有叶子节点 key */
-function collectLeafKeys(nodes: ToolTreeNode[]): string[] {
-    const keys: string[] = []
-    for (const n of nodes) {
-        if (n.children && n.children.length > 0) {
-            keys.push(...collectLeafKeys(n.children))
-        } else {
-            keys.push(n.key)
-        }
-    }
-    return keys
-}
-
-/** 递归收集所有子节点 key（含自身） */
-function collectAllChildKeys(nodes: ToolTreeNode[]): string[] {
-    const keys: string[] = []
-    for (const n of nodes) {
-        keys.push(n.key)
-        if (n.children) keys.push(...collectAllChildKeys(n.children))
-    }
-    return keys
-}
-
-export default function ToolConfigModal({ open, onClose, toolTree, toolEnabled, onChange, darkMode }: ToolConfigModalProps) {
-    const [checkedKeys, setCheckedKeys] = useState<React.Key[]>([])
-
-    // 打开 Modal 时同步启用的叶子节点
-    useEffect(() => {
-        if (open && toolEnabled) {
-            const enabled = collectLeafKeys(toolTree).filter(k => toolEnabled[k] !== false)
-            setCheckedKeys(enabled)
-        }
-    }, [open, toolTree, toolEnabled])
-
-    const handleCheck = useCallback((_checked: React.Key[] | { checked: React.Key[]; halfChecked: React.Key[] }, info: any) => {
-        const newChecked = Array.isArray(_checked) ? _checked : _checked.checked
-        setCheckedKeys(newChecked)
-
-        // 获取被点击节点 key，递归影响所有子节点
-        const nodeKey = info.node?.key as string
-        if (!nodeKey) {
-            onChange?.(newChecked.map(String))
-            return
-        }
-
-        const isChecked = newChecked.includes(nodeKey)
-        const childKeys = collectAllChildKeys(info.node?.children || [])
-
-        // 合并为新列表
-        const finalSet = new Set(newChecked)
-        if (isChecked) {
-            childKeys.forEach(k => finalSet.add(k))
-        } else {
-            childKeys.forEach(k => finalSet.delete(k))
-        }
-        const finalKeys = Array.from(finalSet).map(String)
-
-        setCheckedKeys(finalKeys)
-        onChange?.(finalKeys)
-    }, [onChange])
-
-    const handleClose = () => {
-        onChange?.(checkedKeys.map(String))
-        onClose()
-    }
-
-    const expandedKeys = useMemo(() => collectKeysUpToDepth(toolTree, 0), [toolTree])
-    const treeData = toAntdTreeData(toolTree)
-
+/** 工具卡片：图标 + 名称（key）+ 描述（VSCode 风格只读展示） */
+function ToolCard({ node, token }: { node: ToolTreeNode; token: any }) {
     return (
-        <AgentModal open={open} onClose={handleClose} darkMode={darkMode}
-            title="工具配置" titleIcon={<SettingOutlined style={{ marginRight: 8 }} />} height={520}>
+        <div style={{ display: 'flex', gap: 8, padding: '8px 10px', border: `1px solid ${token.colorBorderSecondary}`, borderRadius: 6, background: token.colorBgContainer }}>
+            <div style={{ marginTop: 2, flexShrink: 0 }}>{toolIcon(node.key, token)}</div>
+            <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontWeight: 600, fontSize: 13, color: token.colorText, lineHeight: 1.4 }}>{node.label}</div>
+                {node.key && node.key !== node.label && (
+                    <div style={{ fontSize: 11, color: token.colorTextTertiary, fontFamily: 'monospace' }}>{node.key}</div>
+                )}
+                {node.description && (
+                    <div style={{ fontSize: 12, color: token.colorTextSecondary, marginTop: 4, lineHeight: 1.5 }}>{node.description}</div>
+                )}
+            </div>
+        </div>
+    )
+}
+
+/** 递归渲染工具树为分类卡片：叶子 = 卡片；子节点全为叶子 = 分组标题 + 卡片网格；更深 = 分类标题 + 递归 */
+function renderNodes(nodes: ToolTreeNode[], token: any): ReactNode {
+    return nodes.map(node => {
+        const children = node.children || []
+        if (children.length === 0) {
+            return <ToolCard key={node.key} node={node} token={token} />
+        }
+        const childrenAreLeaves = children.every(c => !c.children || c.children.length === 0)
+        if (childrenAreLeaves) {
+            return (
+                <div key={node.key} style={{ marginBottom: 16 }}>
+                    <div style={{ fontWeight: 600, fontSize: 12, color: token.colorTextSecondary, margin: '0 0 8px', letterSpacing: 0.5 }}>{node.label}</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 8 }}>
+                        {children.map(c => <ToolCard key={c.key} node={c} token={token} />)}
+                    </div>
+                </div>
+            )
+        }
+        return (
+            <div key={node.key} style={{ marginBottom: 16 }}>
+                <div style={{ fontWeight: 700, fontSize: 13, color: token.colorText, margin: '0 0 8px' }}>{node.label}</div>
+                {renderNodes(children, token)}
+            </div>
+        )
+    })
+}
+
+export default function ToolConfigModal({ open, onClose, toolTree, darkMode }: ToolConfigModalProps) {
+    const { token } = theme.useToken()
+    return (
+        <AgentModal open={open} onClose={onClose} darkMode={darkMode}
+            title="工具" titleIcon={<SettingOutlined style={{ marginRight: 8 }} />} height={520}>
             <div style={{ padding: 16, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                 <div style={{ marginBottom: 8 }}>
                     <Text type="secondary" style={{ fontSize: 12 }}>
-                        勾选需要注入 LLM 的工具。未勾选的工具在 Agent 调用时将不可用。
+                        当前 Agent 可用工具（只读展示，全量注入）。
                     </Text>
                 </div>
                 <div style={{ flex: 1, overflow: 'auto' }}>
-                    {treeData.length === 0 ? (
+                    {toolTree.length === 0 ? (
                         <Text type="secondary">暂无可用工具</Text>
                     ) : (
-                        <Tree
-                            checkable
-                            defaultExpandedKeys={expandedKeys}
-                            checkedKeys={checkedKeys}
-                            onCheck={handleCheck}
-                            treeData={treeData}
-                            style={{ fontSize: 13, background: 'transparent' }}
-                        />
+                        renderNodes(toolTree, token)
                     )}
                 </div>
             </div>

@@ -19,7 +19,7 @@ export const enLocale: AgentUILocale = {
         noDocsLabel: 'No Docs',
         manageModelsLabel: 'Manage Models',
         modelLabel: 'Model',
-        toolConfigTooltip: 'Tool Config',
+        toolConfigTooltip: 'Tools',
         thinkingOff: 'Off',
         thinkingDefault: 'Default',
         thinkingDeep: 'Deep',

@@ -48,7 +48,7 @@ declare module 'agent-ui' {
         formatModelLabel?: (modelValue: string) => string
         extraPanels?: ReactNode
         bottomPanels?: ReactNode
-        toolConfig?: { tree: ToolTreeNode[]; enabled?: Record<string, boolean>; onChange?: (enabledKeys: string[]) => void }
+        toolConfig?: { tree: ToolTreeNode[] }
         filePicker?: { onSearch: (query: string) => Promise<string[]>; onSelect: (filePath: string) => void }
         sessionID: string; setSessionID: (id: string) => void
         onNewSession?: () => void; collapsed: boolean; onToggle: () => void; darkMode?: boolean
@@ -335,8 +335,8 @@ declare module 'agent-ui' {
     export interface AgentModalProps { open: boolean; onClose: () => void; title?: string; titleIcon?: ReactNode; width?: number; height?: number; darkMode?: boolean; children: ReactNode; footer?: ReactNode }
     export const AgentModal: React.FC<AgentModalProps>
 
-    export interface ToolTreeNode { key: string; label: string; children?: ToolTreeNode[] }
-    export interface ToolConfigModalProps { open: boolean; onClose: () => void; toolTree: ToolTreeNode[]; toolEnabled?: Record<string, boolean>; onChange?: (enabledKeys: string[]) => void; darkMode?: boolean }
+    export interface ToolTreeNode { key: string; label: string; description?: string; children?: ToolTreeNode[] }
+    export interface ToolConfigModalProps { open: boolean; onClose: () => void; toolTree: ToolTreeNode[]; darkMode?: boolean }
     export const ToolConfigModal: React.FC<ToolConfigModalProps>
 
     export interface FilePickerModalProps { open: boolean; onClose: () => void; onSearch: (query: string) => Promise<string[]>; selectedFiles?: string[]; onSelect: (filePath: string) => void; darkMode?: boolean }

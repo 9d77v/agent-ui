@@ -19,7 +19,7 @@ export const zhLocale: AgentUILocale = {
         noDocsLabel: '无文档',
         manageModelsLabel: '管理模型',
         modelLabel: '模型',
-        toolConfigTooltip: '工具配置',
+        toolConfigTooltip: '工具',
         thinkingOff: '停用',
         thinkingDefault: '标准',
         thinkingDeep: '深度',

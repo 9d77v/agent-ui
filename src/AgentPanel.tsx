@@ -33,11 +33,9 @@ export interface PanelProps {
     extraPanels?: ReactNode
     /** 渲染在输入区上方的面板（如会话待办清单），位于 MessageList/审批之后、ChatInput 之前 */
     bottomPanels?: ReactNode
-    /** 工具配置（传入则渲染内置 ToolConfigModal） */
+    /** 工具展示（传入则渲染内置 ToolConfigModal；只读分类卡片，无勾选） */
     toolConfig?: {
         tree: ToolTreeNode[]
-        enabled?: Record<string, boolean>
-        onChange?: (enabledKeys: string[]) => void
     }
     /** 文件搜索（传入则渲染内置 FilePickerModal） */
     filePicker?: {
@@ -193,7 +191,7 @@ export default function FrameworkAgentPanel(props: PanelProps) {
                         {questionnaireData && (
                             <QuestionnaireForm steps={questionnaireData.questions || []} initialAnswers={undefined}
                                 onComplete={(answers: string) => {
-                                    // 答案作为 askQuestions 工具结果回传（工具在阻塞等待，非新用户消息）
+                                    // 答案作为 ask_user 工具结果回传（工具在阻塞等待，非新用户消息）
                                     // 提交成功才收起表单；失败（连接断开）保留表单供重试
                                     const ok = ws.submitQuestionnaireAnswer(questionnaireData.id, answers)
                                     if (ok) setQuestionnaireData(null)
@@ -227,8 +225,7 @@ export default function FrameworkAgentPanel(props: PanelProps) {
                 )}
                 {props.toolConfig && (
                     <ToolConfigModal open={toolConfigOpen} onClose={() => setToolConfigOpen(false)}
-                        toolTree={props.toolConfig.tree} toolEnabled={props.toolConfig.enabled}
-                        onChange={props.toolConfig.onChange} darkMode={darkMode} />
+                        toolTree={props.toolConfig.tree} darkMode={darkMode} />
                 )}
                 {props.filePicker && (
                     <FilePickerModal open={filePickerOpen} onClose={() => setFilePickerOpen(false)}
