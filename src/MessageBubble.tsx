@@ -1,12 +1,46 @@
 import { memo, useEffect, useRef, useState } from 'react'
-import { Typography, Button, theme } from 'antd'
-import { AgentMessage } from './hooks/useMessageTree'
+import { Typography, Button, theme, Modal } from 'antd'
+import { FileOutlined, FileImageOutlined, FileTextOutlined, CodeOutlined, FileZipOutlined, FilePdfOutlined, FileWordOutlined, FileExcelOutlined, FilePptOutlined } from '@ant-design/icons'
+import { AgentMessage, Attachment } from './hooks/useMessageTree'
+import { stripFileRefBlock, stripImagePlaceholders } from './attachments'
 import ToolTimeline from './ToolTimeline'
 import type { ToolViewItem } from './types'
 import MarkdownRenderer from './Markdown'
 import { useAgentLocale } from './locale/index'
 
 const { Text } = Typography
+
+/** 文件 chip 图标：按扩展名选 FileOutlined 系列图标 */
+function fileIcon(path: string): React.ReactNode {
+    const ext = (path.split('.').pop() || '').toLowerCase()
+    const style = { fontSize: 12 }
+    switch (ext) {
+        case 'jpg': case 'jpeg': case 'png': case 'gif': case 'webp': case 'svg': case 'bmp': case 'ico':
+            return <FileImageOutlined style={style} />
+        case 'md': case 'markdown': case 'txt': case 'log': case 'json': case 'yaml': case 'yml': case 'toml': case 'xml':
+            return <FileTextOutlined style={style} />
+        case 'ts': case 'tsx': case 'js': case 'jsx': case 'go': case 'py': case 'rs': case 'java': case 'c': case 'cpp': case 'h': case 'hpp': case 'cs': case 'rb': case 'php': case 'swift': case 'kt': case 'sql': case 'html': case 'css': case 'scss': case 'less':
+            return <CodeOutlined style={style} />
+        case 'zip': case 'rar': case '7z': case 'tar': case 'gz': case 'bz2':
+            return <FileZipOutlined style={style} />
+        case 'pdf':
+            return <FilePdfOutlined style={style} />
+        case 'doc': case 'docx':
+            return <FileWordOutlined style={style} />
+        case 'xls': case 'xlsx': case 'csv':
+            return <FileExcelOutlined style={style} />
+        case 'ppt': case 'pptx':
+            return <FilePptOutlined style={style} />
+        default:
+            return <FileOutlined style={style} />
+    }
+}
+
+/** 路径 basename（兼容 / 与 \\ 分隔） */
+function basenameOf(p: string): string {
+    const parts = (p || '').split(/[/\\]/)
+    return parts[parts.length - 1] || p
+}
 
 /** hover 元数据时间格式化：今天 → HH:mm（24h）；非今天 → YYYY-MM-DD HH:mm（本地时区）。
  * 非法时间戳原样返回（不渲染异常内容）。 */
@@ -48,6 +82,8 @@ export default memo(function MessageBubble({ msg, darkMode, streamingMsgId, onOp
     // 避免流式期间每帧 ReactMarkdown 全量重解析（长内容 O(n)/帧 → ~10fps）。
     const [revealedReasoning, setRevealedReasoning] = useState(msg.reasoning?.length ?? 0)
     const [revealedContent, setRevealedContent] = useState(msg.content.length)
+    // 图片大图预览（用户消息附件缩略图点击打开，复用 ChatInput 预览模式）
+    const [previewAtt, setPreviewAtt] = useState<Attachment | null>(null)
     useEffect(() => {
         if (!isOutputting) {
             setRevealedReasoning(msg.reasoning?.length ?? 0)
@@ -85,16 +121,66 @@ export default memo(function MessageBubble({ msg, darkMode, streamingMsgId, onOp
         if (isOutputting && msg.showReasoning && reasoningRef.current) reasoningRef.current.scrollTop = reasoningRef.current.scrollHeight
     }, [revealedReasoning, msg.showReasoning, isOutputting])
     if (msg.role === 'user') {
+        const attachments = msg.attachments || []
+        const imageAtts = attachments.filter(a => a.type === 'image')
+        const fileAtts = attachments.filter(a => a.type === 'file')
+        // 显示内容：剥离"附加文件"块；图片占位符按实际图片附件数剥离
+        // （artifact 缺失、附件未建成的占位符保留文字兜底，不显示空气泡）
+        const displayContent = stripImagePlaceholders(
+            stripFileRefBlock(msg.content, loc.chatInput.attachedFilesLabel),
+            imageAtts.length,
+        )
         return (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', maxWidth: '80%' }}>
                 <div style={{ padding: '8px 14px', borderRadius: 12, background: token.colorPrimaryBg, color: token.colorText, fontSize: 13, lineHeight: 1.6 }}>
-                    <MarkdownRenderer content={msg.content} />
+                    {/* 图片缩略图网格（data URI 渲染，点击放大预览） */}
+                    {imageAtts.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: (displayContent.trim() || fileAtts.length > 0) ? 8 : 0 }}>
+                            {imageAtts.map((att, i) => (
+                                <img key={i} src={att.preview || att.path} alt={att.name || '图片'}
+                                    onClick={() => setPreviewAtt(att)}
+                                    style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: 6, cursor: 'zoom-in', border: `1px solid ${token.colorBorderSecondary}`, background: '#fff' }} />
+                            ))}
+                        </div>
+                    )}
+                    {/* 文件 chip（图标 + 文件名，点击复用 onOpenFile 在应用内编辑器打开） */}
+                    {fileAtts.length > 0 && (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: displayContent.trim() ? 6 : 0 }}>
+                            {fileAtts.map((att, i) => (
+                                <span key={i} onClick={() => onOpenFile(att.path)}
+                                    title={att.path}
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: token.colorFillAlter, color: token.colorPrimary, fontSize: 11, cursor: 'pointer', maxWidth: 220, userSelect: 'none' }}>
+                                    {fileIcon(att.path)}
+                                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{att.name || basenameOf(att.path)}</span>
+                                </span>
+                            ))}
+                        </div>
+                    )}
+                    {displayContent.trim() && <MarkdownRenderer content={displayContent} />}
                 </div>
                 {/* hover 显隐小字（文档流 + .agent-msg-action-btn CSS 显隐，恢复可显示版本）：用户消息仅显示时间 */}
                 {msg.timestamp && (
                     <div className="agent-msg-action-btn" style={{ marginTop: 2, fontSize: 11, color: token.colorTextTertiary }}>
                         {formatMessageTime(msg.timestamp)}
                     </div>
+                )}
+                {/* 图片大图预览 Modal（点击缩略图打开；关闭按钮位于图片右上角） */}
+                {previewAtt && (
+                    <Modal
+                        open
+                        onCancel={() => setPreviewAtt(null)}
+                        footer={null}
+                        title={null}
+                        centered
+                        width="fit-content"
+                        styles={{ body: { padding: 8 } }}
+                    >
+                        <img
+                            src={previewAtt.preview || previewAtt.path}
+                            alt={previewAtt.name || '图片'}
+                            style={{ maxWidth: '70vw', maxHeight: '70vh', display: 'block' }}
+                        />
+                    </Modal>
                 )}
             </div>
         )

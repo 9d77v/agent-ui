@@ -1,10 +1,11 @@
 declare module 'agent-ui' {
     import type { ReactNode } from 'react'
-    export interface SessionInfo { session_id: string; title: string; preview?: string; msg_count?: number; last_time?: string; token_usage?: any; pinned?: boolean }
+    export interface SessionInfo { session_id: string; title: string; preview?: string; msg_count?: number; last_time?: string; token_usage?: any; pinned?: boolean; provider_id?: string; model?: string; thinking?: string }
     export interface ToolCallEntry { callId?: string; name: string; args: string; status: 'executing' | 'done' | 'error'; result?: any }
     export interface AgentMessageRetryInfo { messageId: string; sessionId: string; message: string; model: string; providerId: string; mode: string; thinking: string; done?: boolean }
     export interface AgentMessageFileDiff { filePath: string; original?: any; modified?: any }
-    export interface AgentMessage { id: string; seq?: number; turnId?: string; role: 'user' | 'assistant' | 'tool' | 'model'; content: string; reasoning?: string; loading?: boolean; showReasoning?: boolean; needsContinue?: boolean; toolList?: ToolCallEntry[]; retryInfo?: AgentMessageRetryInfo; fileDiff?: AgentMessageFileDiff; timestamp?: string; model?: string }
+    export interface Attachment { type: 'image' | 'file'; path: string; name?: string; preview?: string; startLine?: number; endLine?: number }
+    export interface AgentMessage { id: string; seq?: number; turnId?: string; role: 'user' | 'assistant' | 'tool' | 'model'; content: string; reasoning?: string; loading?: boolean; showReasoning?: boolean; needsContinue?: boolean; toolList?: ToolCallEntry[]; retryInfo?: AgentMessageRetryInfo; fileDiff?: AgentMessageFileDiff; timestamp?: string; model?: string; attachments?: Attachment[] }
     export interface AgentHandoff { label?: string; agent?: string; prompt?: string; send?: boolean; show_continue_on?: boolean }
     export interface AgentStatus { agent_id: string; name: string; status: string; session_id: string; parent_id?: string; depth: number; task?: string; summary?: string; files_changed?: string[]; handoffs?: AgentHandoff[]; error?: string; transient?: boolean; created_at?: string; updated_at?: string }
 
@@ -118,7 +119,7 @@ declare module 'agent-ui' {
     export interface UseAgentPanelStateResult {
         msgTree: MessageTree
         ws: {
-            sendText: (text: string, images?: { url: string }[]) => void
+            sendText: (text: string, images?: SendImageInput[], files?: SendFileInput[]) => void
             sending: boolean
             wsRef: React.MutableRefObject<WebSocket | null>
             streamingMsgIdRef: React.MutableRefObject<string | null>
@@ -160,6 +161,8 @@ declare module 'agent-ui' {
     export interface ModelOption { label: string; value: string; providerId: string }
     export interface SelectedFile { path: string; startLine?: number; endLine?: number }
     export interface SelectedImage { url: string; name: string; preview?: string; size?: number }
+    export interface SendImageInput { url: string; name?: string; preview?: string }
+    export interface SendFileInput { path: string; startLine?: number; endLine?: number }
     export interface ModelState {
         modelOptions: ModelOption[]
         currentModel: string
@@ -230,6 +233,15 @@ declare module 'agent-ui' {
     export const MessageBubble: React.FC<MessageBubbleProps>
     /** 消息 hover 元数据时间格式化：今天 → HH:mm；非今天 → YYYY-MM-DD HH:mm（本地时区） */
     export function formatMessageTime(iso: string): string
+
+    // ---- 附件解析/剥离工具（用户消息附件渲染共用） ----
+    export interface ParsedFileRef { path: string; startLine?: number; endLine?: number }
+    export const ARTIFACT_PLACEHOLDER_RE: RegExp
+    export const ARTIFACT_NAME_RE: RegExp
+    export function parseAttachedFiles(content: string, label?: string): ParsedFileRef[]
+    export function stripFileRefBlock(content: string, label?: string): string
+    export function countImagePlaceholders(content: string): number
+    export function stripImagePlaceholders(content: string, maxStrip?: number): string
 
     // ---- 多 Agent 编排（只读展示，子代理自动化执行） ----
     export interface AgentRosterProps { agents: AgentStatus[]; darkMode?: boolean; onSelect?: (agent: AgentStatus) => void }

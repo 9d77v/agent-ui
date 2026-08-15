@@ -1,6 +1,6 @@
 import { useRef, useState, useCallback, useEffect } from 'react'
 import { message } from 'antd'
-import { type MessageTree, type ToolCallEntry } from './useMessageTree'
+import { type MessageTree, type ToolCallEntry, type Attachment } from './useMessageTree'
 import type { AgentStatus } from '../types'
 
 interface WsInput {
@@ -17,8 +17,22 @@ interface WsInput {
     getWebSocketURL: () => Promise<string>
 }
 
+/** 随消息提交的图片（live 附件数据源：url=本地压缩路径，preview=data URI） */
+export interface SendImageInput {
+    url: string
+    name?: string
+    preview?: string
+}
+
+/** 随消息提交的文件引用（live 附件数据源） */
+export interface SendFileInput {
+    path: string
+    startLine?: number
+    endLine?: number
+}
+
 export interface WsOutput {
-    sendText: (text: string, images?: { url: string }[]) => void
+    sendText: (text: string, images?: SendImageInput[], files?: SendFileInput[]) => void
     sending: boolean
     wsRef: React.MutableRefObject<WebSocket | null>
     streamingMsgIdRef: React.MutableRefObject<string | null>
@@ -304,6 +318,10 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
                 // 会话待办清单更新：dispatch 自定义事件，由宿主应用监听渲染
                 window.dispatchEvent(new CustomEvent('todo-update', { detail: data.todos }))
                 break
+            case 'session_updated':
+                // 会话标题异步生成完成（晚于 turn_complete 的刷新）：复用 session-created 刷新链更新列表标题
+                if (data.session_id) window.dispatchEvent(new CustomEvent('session-created', { detail: data.session_id }))
+                break
             case 'file_changed':
                 // Agent 会话文件变动（临时变动列表数据源）：dispatch 自定义事件，由宿主应用监听渲染
                 window.dispatchEvent(new CustomEvent('file-change', { detail: {
@@ -383,7 +401,7 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
         }
     }, [getWebSocketURL, handleWsMessage])
 
-    const sendText = useCallback(async (text: string, images?: { url: string }[]) => {
+    const sendText = useCallback(async (text: string, images?: SendImageInput[], files?: SendFileInput[]) => {
         // 防并发：有活跃流时拒绝新发送。
         // 即使停止按钮意外恢复为提交按钮（sending 状态不一致），也阻止与进行中的编排并发。
         if (sendingRef.current) {
@@ -391,7 +409,18 @@ export function useAgentWebSocket(input: WsInput): WsOutput {
             return
         }
         const userMsgId = 'user_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6)
-        messageTree.addMessage({ id: userMsgId, role: 'user', content: text || (images && images.length > 0 ? '🖼 [图片]' : ''), loading: false, timestamp: new Date().toISOString() })
+        // 附件数据模型：图片（url/name/preview data URI）+ 文件（path/行号区间），live 直接构造存入树消息
+        const attachments: Attachment[] = [
+            ...(images || []).map(img => ({ type: 'image' as const, path: img.url, name: img.name, preview: img.preview })),
+            ...(files || []).map(f => ({ type: 'file' as const, path: f.path, startLine: f.startLine, endLine: f.endLine })),
+        ]
+        // '🖼 [图片]' 占位回退仅在无附件时保留（有附件时气泡渲染真实缩略图/chip）
+        messageTree.addMessage({
+            id: userMsgId, role: 'user',
+            content: text || (attachments.length === 0 && images && images.length > 0 ? '🖼 [图片]' : ''),
+            attachments: attachments.length > 0 ? attachments : undefined,
+            loading: false, timestamp: new Date().toISOString(),
+        })
 
         const pid = activeProviderId || (currentModel.includes('||') ? currentModel.split('||')[0] : '')
         const mn = currentModel.includes('||') ? currentModel.split('||')[1] : currentModel

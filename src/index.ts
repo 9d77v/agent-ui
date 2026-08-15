@@ -5,7 +5,7 @@ export { AgentUIContext, useAgentLocale, defaultLocale, zhLocale } from './local
 export type { AgentUILocale, AgentUIContextValue } from './locale/index'
 
 export { useMessageTree } from './hooks/useMessageTree'
-export type { AgentMessage, ToolCallEntry, MessageTree } from './hooks/useMessageTree'
+export type { AgentMessage, ToolCallEntry, MessageTree, Attachment } from './hooks/useMessageTree'
 
 export { useAgentWebSocket } from './hooks/useAgentWebSocket'
 
@@ -37,6 +37,9 @@ export { default as ToolTimeline } from './ToolTimeline'
 export type { ToolViewItem, AgentStatus, AgentHandoff } from './types'
 
 export { debounce, createModelConfigProvider } from './utils'
+
+export { parseAttachedFiles, stripFileRefBlock, stripImagePlaceholders, countImagePlaceholders, ARTIFACT_NAME_RE, ARTIFACT_PLACEHOLDER_RE } from './attachments'
+export type { ParsedFileRef } from './attachments'
 
 export { default as CommandApproval, parseApproval, languageBadge } from './CommandApproval'
 export type { ParsedApproval, ApprovalKind } from './CommandApproval'

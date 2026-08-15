@@ -8,6 +8,20 @@ export interface ToolCallEntry {
     result?: any
 }
 
+/** 消息附件（用户消息：图片缩略图 + 文件引用 chip）。live 由 sendText/handleSend 构造，history 由宿主 loadHistory 从 content 解析重建 */
+export interface Attachment {
+    type: 'image' | 'file'
+    /** 文件路径（image 为本地图片路径，file 为被引用文件路径） */
+    path: string
+    /** 显示名（basename） */
+    name?: string
+    /** 图片预览（WebView2 拦截 file://，一律用 data URI） */
+    preview?: string
+    /** 文件引用行号区间（可选） */
+    startLine?: number
+    endLine?: number
+}
+
 export interface AgentMessage {
     id: string
     seq?: number
@@ -28,6 +42,8 @@ export interface AgentMessage {
     timestamp?: string
     /** 消息使用的模型名（流式取当前模型，历史解析自 custom_metadata.openai_model） */
     model?: string
+    /** 用户消息附件（图片/文件）；assistant 消息不使用 */
+    attachments?: Attachment[]
 }
 
 export interface MessageTree {

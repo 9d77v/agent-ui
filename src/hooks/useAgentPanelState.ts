@@ -175,7 +175,13 @@ export function useAgentPanelState(opts: UseAgentPanelStateOptions): UseAgentPan
             }).join('\n')
             fullText = finalText + (finalText ? '\n\n' : '') + mergedLocale.chatInput.attachedFilesLabel + ':\n' + refs
         }
-        ws.sendText(fullText, images.map(img => ({ url: img.url })))
+        // 图片传 url/name/preview（live 附件数据源，气泡渲染缩略图）；文件传引用（path/行号区间）
+        // fullText（含"附加文件"块）仍原样作为 WS payload 文本发给 LLM（agent 按路径 read_file 行为不变）
+        ws.sendText(
+            fullText,
+            images.map(img => ({ url: img.url, name: img.name, preview: img.preview })),
+            files,
+        )
         if (opts.onClearFiles) opts.onClearFiles()
         if (opts.onClearImages) opts.onClearImages()
     }, [ws, opts.selectedFiles, opts.onClearFiles, opts.selectedImages, opts.onClearImages, mergedLocale])

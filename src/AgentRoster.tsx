@@ -1,8 +1,53 @@
 import { useEffect, useRef, useState } from 'react'
-import { Typography, Tag, Space, theme } from 'antd'
+import { Typography, Tag, Space, theme, Tooltip } from 'antd'
 import type { AgentStatus } from './types'
 
 const { Text } = Typography
+
+/** token 数量格式化（1.2K / 3.4M）。 */
+function fmt(n: number): string {
+    if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M'
+    if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K'
+    return String(n)
+}
+
+/**
+ * AgentTokenUsage 子代理行的 token 用量展示（行最右）：
+ * 显示累计 total_tokens，tooltip 展开最近一次 LLM 调用的完整 token_usage（prompt/completion/cached/total）。
+ */
+function AgentTokenUsage({ total, lastTokenUsage }: { total?: number; lastTokenUsage?: string }) {
+    const { token } = theme.useToken()
+    if (!total || total <= 0) return null
+    let last: any = null
+    if (lastTokenUsage) {
+        try { last = JSON.parse(lastTokenUsage) } catch { /* ignore */ }
+    }
+    const rows = last ? ([
+        ['输入', last.prompt_tokens ?? 0],
+        ['输出', last.completion_tokens ?? 0],
+        ['缓存命中', last.cached_tokens ?? 0],
+        ['最近一次总计', last.total_tokens ?? 0],
+    ] as [string, number][]).filter(([, v]) => v > 0) : []
+    return (
+        <Tooltip placement="topRight" title={<div style={{ fontSize: 12, lineHeight: 1.8, minWidth: 160, whiteSpace: 'nowrap' }}>
+            <div style={{ color: '#aaa' }}>累计 {fmt(total)} tokens</div>
+            {rows.length > 0 && (
+                <>
+                    <div style={{ borderTop: '1px solid #555', margin: '2px 0', color: '#aaa' }}>最近一次调用</div>
+                    {rows.map(([label, v]) => (
+                        <div key={label} style={{ display: 'flex', justifyContent: 'space-between', gap: 16 }}>
+                            <span style={{ color: '#aaa' }}>{label}</span><span>{fmt(v)}</span>
+                        </div>
+                    ))}
+                </>
+            )}
+        </div>}>
+            <span style={{ fontSize: 11, color: token.colorTextTertiary, whiteSpace: 'nowrap', flexShrink: 0, cursor: 'default' }}>
+                {fmt(total)}
+            </span>
+        </Tooltip>
+    )
+}
 
 export const statusMeta: Record<string, { label: string; color: string }> = {
     idle: { label: '待命', color: 'default' },
@@ -113,6 +158,8 @@ export default function AgentRoster({ agents, darkMode, onSelect }: {
                                     </div>
                                 )}
                             </div>
+                            {/* 行最右：累计 token + 最近一次调用 token_usage tooltip */}
+                            <AgentTokenUsage total={a.total_tokens} lastTokenUsage={a.last_token_usage} />
                         </div>
                     )
                 })

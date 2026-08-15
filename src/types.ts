@@ -32,6 +32,10 @@ export interface AgentStatus {
     handoffs?: AgentHandoff[]
     error?: string
     transient?: boolean
+    /** 累计 token 用量（agent_runs 按 agent_id 聚合） */
+    total_tokens?: number
+    /** 最近一次 LLM 调用返回的完整 token_usage JSON（供展示"当前 token"） */
+    last_token_usage?: string
     created_at?: string
     updated_at?: string
 }
@@ -77,6 +81,10 @@ export interface SessionInfo {
     token_usage?: any
     /** 会话是否固定（固定会话在列表置顶） */
     pinned?: boolean
+    /** 会话上次使用的模型/思考模式（打开会话时前端回填选择器） */
+    provider_id?: string
+    model?: string
+    thinking?: string
 }
 
 /** token 用量 */
