@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Button, Dropdown, Input, Modal, Typography, message, theme } from 'antd'
 import { PlusOutlined, PushpinFilled, PushpinOutlined } from '@ant-design/icons'
 import { useAgentLocale } from './locale/index'
@@ -17,10 +17,12 @@ interface Props {
     onRenameSession?: (sessionID: string, title: string) => Promise<{ success: boolean; error?: string }>
     /** 固定/取消固定会话（成功后由宿主负责刷新列表） */
     onTogglePin?: (sessionID: string, pinned: boolean) => Promise<{ success: boolean; error?: string }>
+    /** 搜索栏槽位：渲染在标题行与列表之间（由宿主提供，如会话标题搜索框）；不传则不渲染 */
+    searchBar?: ReactNode
 }
 
 /** 会话历史列表：一行一个（非卡片），右键菜单（固定/重命名/删除），标题行右侧新建（加号）。 */
-export default function SessionHistory({ sessions, darkMode, onOpen, onRefresh, currentSessionID, onNewSession, onDeleteSession, onRenameSession, onTogglePin }: Props) {
+export default function SessionHistory({ sessions, darkMode, onOpen, onRefresh, currentSessionID, onNewSession, onDeleteSession, onRenameSession, onTogglePin, searchBar }: Props) {
     const { token } = theme.useToken()
     const loc = useAgentLocale()
     const [renaming, setRenaming] = useState<SessionInfo | null>(null)
@@ -69,6 +71,8 @@ export default function SessionHistory({ sessions, darkMode, onOpen, onRefresh, 
                 <Text strong style={{ color: token.colorText }}>{loc.panel.history}</Text>
                 <Button type="text" size="small" icon={<PlusOutlined />} onClick={onNewSession} title={loc.panel.newSession} />
             </div>
+
+            {searchBar}
 
             {sessions.length === 0 ? (
                 <Text type="secondary">{loc.session.noHistory}</Text>

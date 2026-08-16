@@ -310,6 +310,8 @@ declare module 'agent-ui' {
         onRenameSession?: (sessionID: string, title: string) => Promise<{ success: boolean; error?: string }>
         /** 固定/取消固定会话 */
         onTogglePin?: (sessionID: string, pinned: boolean) => Promise<{ success: boolean; error?: string }>
+        /** 搜索栏槽位：渲染在标题行与列表之间（由宿主提供，如会话标题搜索框）；不传则不渲染 */
+        searchBar?: React.ReactNode
     }
     export const SessionHistory: React.FC<SessionHistoryProps>
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Typography, Tag, Space, theme } from 'antd'
 import type { AgentStatus } from './types'
 import TokenProgress from './TokenProgress'
@@ -28,20 +28,22 @@ const flashKeyframes = `@keyframes agentRowFlash {
     50% { background-color: rgba(250, 173, 20, 0.35); }
 }`
 
-/** 最新生成在前（created_at/updated_at 倒序，缺失排后）。 */
-function byNewest(a: AgentStatus, b: AgentStatus): number {
-    const ta = a.created_at || a.updated_at || ''
-    const tb = b.created_at || b.updated_at || ''
-    if (ta && tb && ta !== tb) return ta < tb ? 1 : -1
+/** 最新更新在前（updated_at 优先、created_at 兜底，双缺失排后）。 */
+function byUpdatedAt(a: AgentStatus, b: AgentStatus): number {
+    const ta = a.updated_at || a.created_at || ''
+    const tb = b.updated_at || b.created_at || ''
+    if (ta && !tb) return -1
+    if (!ta && tb) return 1
+    if (ta !== tb) return ta < tb ? 1 : -1
     return 0
 }
 
 /**
  * AgentRoster 子代理编排列表（只读展示，常驻展开）。
- * 常驻 / 一次性 两个 tab 分组展示，每组按「最新生成在前」排序
- * （用户决策：一次性瞬态不淘汰、与常驻 tab 区分）。
+ * 常驻 / 一次性合并为单一列表，按「最新更新在前」排序
+ * （updated_at 优先、created_at 兜底，双缺失排后）。
  * 状态经 agent_status 广播或 GetSessionAgents 提供。
- * 子代理完成（agent_done）→ 对应行闪烁 3 次并切到所在 tab（不弹消息）。
+ * 子代理完成（agent_done）→ 对应行闪烁 3 次（不弹消息）。
  */
 export default function AgentRoster({ agents, darkMode, onSelect }: {
     agents: AgentStatus[]
@@ -50,23 +52,18 @@ export default function AgentRoster({ agents, darkMode, onSelect }: {
     onSelect?: (agent: AgentStatus) => void
 }) {
     const { token } = theme.useToken()
-    const [tab, setTab] = useState('resident')
     const [flashIDs, setFlashIDs] = useState<Set<string>>(new Set())
-    const agentsRef = useRef(agents)
-    agentsRef.current = agents
-    const resident = agents.filter(a => !a.transient).sort(byNewest)
-    const transient = agents.filter(a => a.transient).sort(byNewest)
+    // 常驻 / 一次性合并为单一列表（spread 防改 props），按更新时间倒序。
+    const items = [...agents].sort(byUpdatedAt)
     const total = agents.length
 
     // 子代理完成/失败（agent_done WS → useAgentWebSocket dispatch 的 CustomEvent）→ 行闪烁反馈：
-    // 若折叠自动展开、切到所在 tab（常驻/一次性），对应行闪烁 3 次后恢复（2.4s 定时清除，留动画余量）。
+    // 对应行闪烁 3 次后恢复（2.4s 定时清除，留动画余量）。
     useEffect(() => {
         const h = (e: Event) => {
             const d = (e as CustomEvent).detail
             const id: string = d?.agent_id || ''
             if (!id) return
-            const target = agentsRef.current.find(a => a.agent_id === id)
-            if (target) setTab(target.transient ? 'transient' : 'resident')
             setFlashIDs(prev => new Set(prev).add(id))
             setTimeout(() => {
                 setFlashIDs(prev => {
@@ -81,7 +78,7 @@ export default function AgentRoster({ agents, darkMode, onSelect }: {
     }, [])
 
     // 挂载竞态重放（C2）：宿主在面板整体折叠时收到 agent-done 后展开面板，本组件此时才挂载、事件已丢失——
-    // 宿主把 detail 暂存到 window.__pendingAgentDone，挂载后重放一次触发既有「切对应 tab + 展开 + 行闪烁」
+    // 宿主把 detail 暂存到 window.__pendingAgentDone，挂载后重放一次触发既有「展开 + 行闪烁」
     // 逻辑（监听 effect 声明在前、重放 dispatch 在后，同一 mount 顺序安全）。
     useEffect(() => {
         const pending = (window as any).__pendingAgentDone
@@ -133,23 +130,9 @@ export default function AgentRoster({ agents, darkMode, onSelect }: {
                 {total === 0 && <Text type="secondary" style={{ fontSize: 11, paddingLeft: 0 }}>无运行中的子代理</Text>}
                 {total > 0 && (
                     <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-                        {/* tab 按钮（自实现：不依赖 antd Tabs 内部类名，列表容器可可靠 flex 滚动） */}
-                        <div style={{ display: 'flex', gap: 8, paddingBottom: 4, flexShrink: 0 }}>
-                            {(['resident', 'transient'] as const).map(k => (
-                                <button key={k} onClick={() => setTab(k)}
-                                    style={{
-                                        border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-                                        fontSize: 11, padding: '2px 8px', borderRadius: 4,
-                                        color: darkMode ? '#d4d4d4' : '#595959',
-                                        background: tab === k ? (darkMode ? '#2a2d2e' : '#e8e8e8') : 'transparent',
-                                    }}>
-                                    {k === 'resident' ? `常驻 ${resident.length}` : `一次性 ${transient.length}`}
-                                </button>
-                            ))}
-                        </div>
                         {/* 列表容器：flex:1 + overflowY auto（可靠滚动） */}
                         <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-                            {tab === 'resident' ? renderList(resident) : renderList(transient)}
+                            {renderList(items)}
                         </div>
                     </div>
                 )}
