@@ -9,7 +9,6 @@ export const enLocale: AgentUILocale = {
     },
     chatInput: {
         placeholder: 'Type a message, Enter to send, Shift+Enter for new line',
-        sendTooltip: 'Send',
         stopTooltip: 'Stop',
         addFileTooltip: 'Add File',
         addImageTooltip: 'Add Image',

@@ -9,7 +9,6 @@ export const zhLocale: AgentUILocale = {
     },
     chatInput: {
         placeholder: '输入消息，Enter 发送，Shift+Enter 换行',
-        sendTooltip: '发送',
         stopTooltip: '停止',
         addFileTooltip: '添加文件',
         addImageTooltip: '添加图片',

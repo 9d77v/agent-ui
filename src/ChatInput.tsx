@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Input, Button, Select, Tooltip, Dropdown, Typography, Space, Modal, theme } from 'antd'
-import { CheckOutlined, SettingOutlined, FileAddOutlined, PictureOutlined, PlusOutlined, CloseOutlined, ToolOutlined, ArrowUpOutlined, ThunderboltOutlined } from '@ant-design/icons'
+import { CheckOutlined, SettingOutlined, FileAddOutlined, PictureOutlined, PlusOutlined, CloseOutlined, ToolOutlined, ArrowUpOutlined } from '@ant-design/icons'
 import { useAgentLocale } from './locale/index'
 import type { ModelOption, SelectedFile, SelectedImage } from './types'
 
@@ -47,13 +47,15 @@ export default function ChatInput(p: ChatInputProps) {
         setText(v)
         onInputChange?.(v)
     }
+    // 是否有可发送内容（文本非空，或已附加文件/图片）
+    const canSend = !!text.trim() || !!p.selectedImages?.length || !!p.selectedFiles?.length
+    // 是否有快捷文本（合并到发送按钮：hover 展开点击即发送）
+    const hasQuick = !!(p.quickTexts && p.quickTexts.length > 0)
     const send = () => {
-        if (sending) return
+        if (sending || !canSend) return
         onSend(text)
         setText('')
     }
-    // 是否有可发送内容（文本非空，或已附加文件/图片）
-    const canSend = !!text.trim() || !!p.selectedImages?.length || !!p.selectedFiles?.length
     const thinkingItems = [
         { key: 'off', label: loc.chatInput.thinkingOff },
         { key: 'default', label: loc.chatInput.thinkingDefault },
@@ -159,26 +161,24 @@ export default function ChatInput(p: ChatInputProps) {
                     {p.onToolConfigOpen && <Tooltip title={loc.chatInput.toolConfigTooltip}><Button type="text" size="small" icon={<ToolOutlined style={{ fontSize: 14 }} />} onClick={p.onToolConfigOpen} /></Tooltip>}
                 </>}
                 <div style={{ flex: 1 }} />
-                {/* 发送中：快捷文本 chip 置灰且不挂 Dropdown，hover 不显示快捷文本 */}
-                {p.quickTexts && p.quickTexts.length > 0 && (
-                    sending ? (
-                        <Button type="text" size="small" disabled icon={<ThunderboltOutlined />} />
-                    ) : (
-                        <Dropdown trigger={['hover']} menu={{ items: p.quickTexts.map((t, i) => ({ key: String(i), label: t })), onClick: ({ key }) => onSend(p.quickTexts![Number(key)]) }}>
-                            <Button type="text" size="small" icon={<ThunderboltOutlined />} />
-                        </Dropdown>
-                    )
-                )}
-                {/* 发送/停止按钮（快捷文本右侧）：向上箭头发送，运行中变为停止；风格与工具栏文字按钮一致 */}
+                {/* 发送/停止按钮：快捷文本已合并到发送按钮——hover 展开快捷文本列表（点击某项即发送），点击按钮主体发送当前输入；运行中变为停止 */}
                 {sending ? (
                     <Tooltip title={loc.chatInput.stopTooltip}>
                         {/* VSCode stop 图标：实心方块（antd 无该图标，用 span 绘制） */}
                         <Button type="text" size="small" icon={<span style={{ display: 'inline-block', width: 10, height: 10, background: token.colorError, borderRadius: 2 }} />} onClick={onCancel} style={{ color: token.colorError }} />
                     </Tooltip>
                 ) : (
-                    <Tooltip title={loc.chatInput.sendTooltip}>
-                        <Button type="text" size="small" icon={<ArrowUpOutlined style={{ fontSize: 16 }} />} onClick={send} disabled={!canSend} style={canSend ? { color: token.colorPrimary } : undefined} />
-                    </Tooltip>
+                    <Dropdown
+                        trigger={['hover']}
+                        disabled={!hasQuick}
+                        menu={{
+                            items: (p.quickTexts || []).map((t, i) => ({ key: String(i), label: t })),
+                            onClick: ({ key }) => onSend(p.quickTexts![Number(key)]),
+                        }}
+                    >
+                        {/* 发送按钮：不设 tooltip（hover 时快捷文本下拉本身即提示，避免上弹 tooltip 下弹菜单的叠加干扰） */}
+                        <Button type="text" size="small" icon={<ArrowUpOutlined style={{ fontSize: 16 }} />} onClick={send} disabled={!canSend && !hasQuick} style={canSend || hasQuick ? { color: token.colorPrimary } : undefined} />
+                    </Dropdown>
                 )}
             </div>
 

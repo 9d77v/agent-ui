@@ -8,7 +8,6 @@ export interface PanelLocale {
 /** 输入框 */
 export interface ChatInputLocale {
     placeholder: string
-    sendTooltip: string
     stopTooltip: string
     addFileTooltip: string
     addImageTooltip: string
