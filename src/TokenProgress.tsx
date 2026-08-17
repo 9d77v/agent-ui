@@ -1,4 +1,5 @@
-import { Tooltip, theme } from 'antd'
+import { Button, Tooltip, theme } from 'antd'
+import { CompressOutlined } from '@ant-design/icons'
 
 interface TokenUsage {
     prompt_tokens?: number
@@ -12,7 +13,17 @@ interface TokenUsage {
     messages_tokens?: number
     tool_results_tokens?: number
 }
-interface Props { tokenUsage: TokenUsage | null; currentContextWindow: number; darkMode?: boolean }
+interface Props {
+    tokenUsage: TokenUsage | null
+    currentContextWindow: number
+    darkMode?: boolean
+    /** 手动压缩入口阈值（百分比，0=禁用）。上下文占用达到该比例时显示「压缩」按钮 */
+    manualCompactThreshold?: number
+    /** 压缩进行中（禁用按钮防重复点击） */
+    compactLoading?: boolean
+    /** 点击压缩回调 */
+    onCompact?: () => void
+}
 
 function fmt(n: number): string { if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M'; if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K'; return String(n) }
 
@@ -22,7 +33,7 @@ function pctOf(seg: number, window: number): string {
     return ((seg / window) * 100).toFixed(1) + '%'
 }
 
-export default function TokenProgress({ tokenUsage, currentContextWindow, darkMode }: Props) {
+export default function TokenProgress({ tokenUsage, currentContextWindow, darkMode, manualCompactThreshold = 0, compactLoading = false, onCompact }: Props) {
     const { token } = theme.useToken()
     const window = tokenUsage?.context_window || currentContextWindow
     if (!tokenUsage || window <= 0) return null
@@ -33,6 +44,7 @@ export default function TokenProgress({ tokenUsage, currentContextWindow, darkMo
     const radius = 15.5
     const circumference = 2 * Math.PI * radius
     const offset = circumference * (1 - Math.min(total / window, 1))
+    const showCompact = manualCompactThreshold > 0 && total > 0 && (total / window) * 100 >= manualCompactThreshold
 
     // VSCode 式上下文窗口细分（后端随 token_usage 消息估算推送，不新增消息类型）
     const hasBreakdown = !!(tokenUsage.system_tokens || tokenUsage.tools_tokens || tokenUsage.messages_tokens || tokenUsage.tool_results_tokens)
@@ -75,11 +87,25 @@ export default function TokenProgress({ tokenUsage, currentContextWindow, darkMo
             <span style={{ color: '#aaa' }}>总计</span><span style={{ fontWeight: 600 }}>{fmt(total)}</span>
         </div>
     </div>}>
-        <div style={{ position: 'relative', width: 22, height: 22, cursor: 'pointer', flexShrink: 0 }}>
-            <svg width={22} height={22} viewBox="0 0 36 36">
-                <circle cx={18} cy={18} r={radius} fill="none" stroke={token.colorFillSecondary} strokeWidth={3} />
-                <circle cx={18} cy={18} r={radius} fill="none" stroke={strokeColor} strokeWidth={3} strokeDasharray={circumference} strokeDashoffset={offset} transform="rotate(-90 18 18)" strokeLinecap="round" />
-            </svg>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            {showCompact && (
+                <Button
+                    size="small"
+                    type="text"
+                    icon={<CompressOutlined />}
+                    loading={compactLoading}
+                    disabled={compactLoading}
+                    onClick={(e) => { e.stopPropagation(); onCompact?.() }}
+                    style={{ fontSize: 12, color: token.colorTextSecondary, padding: 0, height: 22, minWidth: 22 }}
+                    title="压缩上下文（将早期历史替换为摘要以节省上下文）"
+                />
+            )}
+            <div style={{ position: 'relative', width: 22, height: 22, cursor: 'pointer', flexShrink: 0 }}>
+                <svg width={22} height={22} viewBox="0 0 36 36">
+                    <circle cx={18} cy={18} r={radius} fill="none" stroke={token.colorFillSecondary} strokeWidth={3} />
+                    <circle cx={18} cy={18} r={radius} fill="none" stroke={strokeColor} strokeWidth={3} strokeDasharray={circumference} strokeDashoffset={offset} transform="rotate(-90 18 18)" strokeLinecap="round" />
+                </svg>
+            </div>
         </div>
     </Tooltip>
 }

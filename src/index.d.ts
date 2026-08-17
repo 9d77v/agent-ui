@@ -7,7 +7,7 @@ declare module 'agent-ui' {
     export interface Attachment { type: 'image' | 'file'; path: string; name?: string; preview?: string; startLine?: number; endLine?: number }
     export interface AgentMessage { id: string; seq?: number; turnId?: string; role: 'user' | 'assistant' | 'tool' | 'model'; content: string; reasoning?: string; loading?: boolean; showReasoning?: boolean; needsContinue?: boolean; toolList?: ToolCallEntry[]; retryInfo?: AgentMessageRetryInfo; fileDiff?: AgentMessageFileDiff; timestamp?: string; model?: string; attachments?: Attachment[] }
     export interface AgentHandoff { label?: string; agent?: string; prompt?: string; send?: boolean; show_continue_on?: boolean }
-    export interface AgentStatus { agent_id: string; name: string; status: string; session_id: string; parent_id?: string; depth: number; task?: string; summary?: string; files_changed?: string[]; handoffs?: AgentHandoff[]; error?: string; transient?: boolean; created_at?: string; updated_at?: string }
+    export interface AgentStatus { agent_id: string; name: string; status: string; session_id: string; parent_id?: string; depth: number; task?: string; completion_summary?: string; files_changed?: string[]; handoffs?: AgentHandoff[]; error?: string; transient?: boolean; created_at?: string; updated_at?: string }
 
     export interface PanelLocale { title: string; history: string; newSession: string }
     export interface ChatInputLocale { placeholder: string; stopTooltip: string; addFileTooltip: string; addImageTooltip: string; docsAttachedTooltip: string; docsNotAttachedTooltip: string; docsLabel: string; noDocsLabel: string; manageModelsLabel: string; modelLabel: string; toolConfigTooltip: string; thinkingOff: string; thinkingDefault: string; thinkingDeep: string; imageCountLabel: string; attachedFilesLabel: string }
@@ -295,7 +295,19 @@ declare module 'agent-ui' {
     export interface QuestionnaireFormProps { steps: QuestionStep[]; initialAnswers?: Record<string, string>; onSaveProgress?: (answers: Record<string, string>) => void; onComplete: (answers: string) => void; darkMode?: boolean }
     export const QuestionnaireForm: React.FC<QuestionnaireFormProps>
 
-    export interface ApprovalStatusBarProps { approvalMode: string; onModeChange: (mode: string) => void; tokenUsage: any; currentContextWindow: number; darkMode?: boolean }
+    export interface ApprovalStatusBarProps {
+        approvalMode: string
+        onModeChange: (mode: string) => void
+        tokenUsage: any
+        currentContextWindow: number
+        darkMode?: boolean
+        /** 手动压缩入口阈值（百分比，0=禁用），透传给 TokenProgress */
+        manualCompactThreshold?: number
+        /** 压缩进行中 */
+        compactLoading?: boolean
+        /** 点击压缩回调 */
+        onCompact?: () => void
+    }
     export const ApprovalStatusBar: React.FC<ApprovalStatusBarProps>
 
     export interface SessionHistoryProps {
@@ -328,7 +340,17 @@ declare module 'agent-ui' {
         messages_tokens?: number
         tool_results_tokens?: number
     }
-    export interface TokenProgressProps { tokenUsage: TokenUsage | null; currentContextWindow: number; darkMode?: boolean }
+    export interface TokenProgressProps {
+        tokenUsage: TokenUsage | null
+        currentContextWindow: number
+        darkMode?: boolean
+        /** 手动压缩入口阈值（百分比，0=禁用）。上下文占用达到该比例时显示「压缩」按钮 */
+        manualCompactThreshold?: number
+        /** 压缩进行中（禁用按钮防重复点击） */
+        compactLoading?: boolean
+        /** 点击压缩回调 */
+        onCompact?: () => void
+    }
     export const TokenProgress: React.FC<TokenProgressProps>
 
     export const ErrorBoundary: React.FC<{ onReset?: () => void; darkMode?: boolean; children?: ReactNode }>

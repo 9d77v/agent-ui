@@ -770,7 +770,7 @@ function renderRunSubagent(tool: ToolViewItem, ctx: ToolRenderContext): ReactNod
     let sub: any = r?.data
     if (typeof sub === 'string') { try { sub = JSON.parse(sub) } catch { sub = null } }
     const agentID = sub?.agent_id || ''
-    const summary = sub?.summary || ''
+    const summary = sub?.completion_summary || ''
     const steps = Array.isArray(sub?.history) ? sub.history : []
     const handoffs = Array.isArray(sub?.handoffs) ? sub.handoffs : []
     if (!agentID && !summary && steps.length === 0 && handoffs.length === 0) {
@@ -829,7 +829,7 @@ function renderAgentList(tool: ToolViewItem, ctx: ToolRenderContext): ReactNode 
                     <Text type="secondary" style={{ fontSize: 11, fontFamily: MONO_FONT }}>{v.agent_id}</Text>
                     <span style={{ fontSize: 10, padding: '0 6px', borderRadius: 8, color: statusColor(v.status, ctx.token), border: `1px solid ${statusColor(v.status, ctx.token)}` }}>{v.status}</span>
                 </div>
-                {v.summary && <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 2 }}>{v.summary}</Text>}
+                {v.completion_summary && <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 2 }}>{v.completion_summary}</Text>}
                 {v.task && <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 2 }}>{v.task}</Text>}
             </div>
         )} />
@@ -845,7 +845,7 @@ function renderAgentWait(tool: ToolViewItem, ctx: ToolRenderContext): ReactNode 
     const sub = r?.data?.result
     // 失败：优先 error 文案（含 Wait 超时路径 data.error）；成功：优先 result.summary / output
     const failText = typeof r?.data?.error === 'string' ? r.data.error : (r?.error || '')
-    const text = ok ? (sub?.summary || r?.output || '') : failText
+    const text = ok ? (sub?.completion_summary || r?.output || '') : failText
     return (
         <div>
             {/* 摘要已展示 name（无 name 时为短 id）；正文仅在摘要用 name 时补充完整 id，避免 id 重复 */}

@@ -107,13 +107,13 @@ export default function AgentRoster({ agents, darkMode, onSelect }: {
                                     <Text style={{ fontSize: 12, color: token.colorText }}>{a.name}</Text>
                                     <Tag color={st.color} style={{ fontSize: 10, lineHeight: '14px', margin: 0 }}>{st.label}</Tag>
                                 </Space>
-                                {(a.summary || a.error || a.task) && (
+                                {(a.completion_summary || a.error || a.task) && (
                                     <div style={{
                                         fontSize: 11,
                                         color: a.error ? '#ff4d4f' : token.colorTextTertiary,
                                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                                     }}>
-                                        {a.summary || a.error || a.task}
+                                        {a.completion_summary || a.error || a.task}
                                     </div>
                                 )}
                             </div>

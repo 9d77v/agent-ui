@@ -3,9 +3,21 @@ import { ThunderboltOutlined, LockOutlined, UnlockOutlined } from '@ant-design/i
 import TokenProgress from './TokenProgress'
 import { useAgentLocale } from './locale/index'
 
-interface Props { approvalMode: string; onModeChange: (mode: string) => void; tokenUsage: any; currentContextWindow: number; darkMode?: boolean }
+interface Props {
+    approvalMode: string
+    onModeChange: (mode: string) => void
+    tokenUsage: any
+    currentContextWindow: number
+    darkMode?: boolean
+    /** 手动压缩入口阈值（百分比，0=禁用），透传给 TokenProgress */
+    manualCompactThreshold?: number
+    /** 压缩进行中 */
+    compactLoading?: boolean
+    /** 点击压缩回调 */
+    onCompact?: () => void
+}
 
-export default function ApprovalStatusBar({ approvalMode, onModeChange, tokenUsage, currentContextWindow, darkMode }: Props) {
+export default function ApprovalStatusBar({ approvalMode, onModeChange, tokenUsage, currentContextWindow, darkMode, manualCompactThreshold = 0, compactLoading = false, onCompact }: Props) {
     const { token } = theme.useToken()
     const loc = useAgentLocale()
     const modeLabel = approvalMode === 'auto' ? loc.approval.modeAuto : approvalMode === 'default' ? loc.approval.modeDefault : loc.approval.modeManual
@@ -16,6 +28,6 @@ export default function ApprovalStatusBar({ approvalMode, onModeChange, tokenUsa
             <Button type="text" size="small" style={{ fontSize: 12, color: modeColor }} icon={modeIcon}>{modeLabel}</Button>
         </Dropdown>
         <div style={{ flex: 1 }} />
-        <TokenProgress tokenUsage={tokenUsage} currentContextWindow={currentContextWindow} darkMode={darkMode} />
+        <TokenProgress tokenUsage={tokenUsage} currentContextWindow={currentContextWindow} darkMode={darkMode} manualCompactThreshold={manualCompactThreshold} compactLoading={compactLoading} onCompact={onCompact} />
     </div>
 }
